@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+
+Sitemap: https://shinyshades.vercel.app/sitemap.xml
