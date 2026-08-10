@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shiny Shades — Policies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Work+Sans:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2a1220;
+    --ink-2:#3a1b2c;
+    --rose:#a83656;
+    --rose-deep:#8a2a46;
+    --gold:#c9a24b;
+    --gold-soft:#e2c98a;
+    --ivory:#faf4ea;
+    --sand:#f1e4cd;
+    --charcoal:#34252b;
+    --line: rgba(42,18,32,0.12);
+    --maxw: 920px;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--ivory);
+    color:var(--charcoal);
+    font-family:'Work Sans', sans-serif;
+    font-size:16px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  h1,h2,h3{
+    font-family:'Fraunces', serif;
+    color:var(--ink);
+    margin:0;
+    font-weight:500;
+  }
+
+  .eyebrow{
+    font-family:'Barlow Condensed', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.16em;
+    font-weight:600;
+    font-size:0.78rem;
+  }
+
+  a{color:var(--rose-deep);}
+
+  /* ---------- shimmer signature ---------- */
+  .shimmer{
+    position:relative;
+    height:2px;
+    width:100%;
+    background:linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-soft) 50%, var(--gold) 80%, transparent);
+    background-size:200% 100%;
+    overflow:hidden;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .shimmer{ animation: sweep 6s linear infinite; }
+  }
+  @keyframes sweep{
+    0%{ background-position:200% 0; }
+    100%{ background-position:-200% 0; }
+  }
+
+  /* ---------- header ---------- */
+  header.site{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:rgba(250,244,234,0.94);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .header-inner{
+    max-width:1100px;
+    margin:0 auto;
+    padding:16px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+  }
+  .wordmark{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:1.4rem;
+    color:var(--ink);
+    letter-spacing:0.01em;
+  }
+  .wordmark span{ color:var(--rose-deep); }
+
+  nav.desktop-nav{
+    display:flex;
+    gap:22px;
+    list-style:none;
+    margin:0;
+    padding:0;
+  }
+  nav.desktop-nav a{
+    font-family:'Barlow Condensed', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    font-weight:600;
+    font-size:0.86rem;
+    text-decoration:none;
+    color:var(--charcoal);
+    padding:6px 2px;
+    border-bottom:2px solid transparent;
+    transition:border-color .2s, color .2s;
+  }
+  nav.desktop-nav a:hover,
+  nav.desktop-nav a.active{
+    color:var(--rose-deep);
+    border-bottom-color:var(--gold);
+  }
+
+  .menu-btn{
+    display:none;
+    background:none;
+    border:1px solid var(--line);
+    border-radius:8px;
+    width:40px;
+    height:40px;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+  .menu-btn span, .menu-btn::before, .menu-btn::after{
+    content:"";
+    display:block;
+    width:18px;
+    height:2px;
+    background:var(--ink);
+    position:relative;
+  }
+  .menu-btn::before{ transform:translateY(-6px); }
+  .menu-btn::after{ transform:translateY(4px); }
+
+  #mobile-drawer{
+    display:none;
+    flex-direction:column;
+    background:var(--ivory);
+    border-bottom:1px solid var(--line);
+  }
+  #mobile-drawer a{
+    padding:14px 24px;
+    border-top:1px solid var(--line);
+    font-family:'Barlow Condensed', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    font-weight:600;
+    font-size:0.95rem;
+    text-decoration:none;
+    color:var(--charcoal);
+  }
+  #mobile-drawer a.active{ color:var(--rose-deep); }
+  body.drawer-open #mobile-drawer{ display:flex; }
+
+  @media (max-width:760px){
+    nav.desktop-nav{ display:none; }
+    .menu-btn{ display:flex; }
+  }
+
+  /* ---------- hero ---------- */
+  .hero{
+    background:radial-gradient(120% 140% at 15% 0%, var(--ink-2) 0%, var(--ink) 60%);
+    color:var(--ivory);
+    padding:76px 24px 56px;
+  }
+  .hero-inner{ max-width:var(--maxw); margin:0 auto; }
+  .hero .eyebrow{ color:var(--gold-soft); margin-bottom:14px; }
+  .hero h1{
+    color:var(--ivory);
+    font-size:clamp(2.1rem, 5vw, 3.1rem);
+    line-height:1.12;
+    max-width:14ch;
+  }
+  .hero .shimmer{ margin:26px 0 26px; max-width:220px; }
+  .hero p.lead{
+    max-width:56ch;
+    color:rgba(250,244,234,0.82);
+    font-size:1.05rem;
+  }
+  .hero-meta{
+    margin-top:30px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .hero-meta a{
+    text-decoration:none;
+    font-family:'Barlow Condensed', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-weight:600;
+    font-size:0.82rem;
+    color:var(--ivory);
+    border:1px solid rgba(226,201,138,0.4);
+    border-radius:999px;
+    padding:8px 16px;
+    transition:background .2s, border-color .2s;
+  }
+  .hero-meta a:hover{
+    background:rgba(226,201,138,0.12);
+    border-color:var(--gold);
+  }
+  .hero-date{
+    margin-top:22px;
+    font-family:'Barlow Condensed', sans-serif;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    font-size:0.78rem;
+    color:rgba(250,244,234,0.55);
+  }
+
+  /* ---------- policy sections ---------- */
+  main{ max-width:var(--maxw); margin:0 auto; padding:0 24px; }
+
+  section.policy{
+    padding:64px 0;
+    border-bottom:1px solid var(--line);
+    scroll-margin-top:84px;
+  }
+  section.policy:last-of-type{ border-bottom:none; }
+
+  .policy-head{
+    display:flex;
+    align-items:baseline;
+    gap:18px;
+    margin-bottom:18px;
+  }
+  .policy-index{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:2.6rem;
+    color:var(--gold);
+    opacity:0.55;
+    line-height:1;
+  }
+  .policy-head h2{
+    font-size:clamp(1.4rem, 3vw, 1.9rem);
+  }
+  .policy-intro{
+    color:var(--rose-deep);
+    font-weight:500;
+    margin:0 0 22px;
+    max-width:60ch;
+  }
+
+  .policy-body h3{
+    font-family:'Work Sans', sans-serif;
+    font-weight:600;
+    font-size:1rem;
+    color:var(--ink);
+    margin:24px 0 8px;
+  }
+  .policy-body h3:first-child{ margin-top:0; }
+  .policy-body p{ margin:0 0 12px; max-width:68ch; }
+  .policy-body ul{
+    margin:0 0 12px;
+    padding-left:20px;
+    max-width:66ch;
+  }
+  .policy-body li{ margin-bottom:6px; }
+  .policy-body strong{ color:var(--ink); }
+
+  .note{
+    margin-top:18px;
+    padding:14px 18px;
+    background:var(--sand);
+    border-left:3px solid var(--gold);
+    border-radius:4px;
+    font-size:0.92rem;
+    max-width:66ch;
+  }
+
+  section.policy:nth-of-type(even){ background:var(--sand); margin:0 -24px; padding:64px 24px; }
+
+  /* ---------- footer ---------- */
+  footer{
+    background:var(--ink);
+    color:rgba(250,244,234,0.8);
+    padding:56px 24px 40px;
+    margin-top:0;
+  }
+  .footer-inner{ max-width:var(--maxw); margin:0 auto; }
+  footer h2{
+    color:var(--ivory);
+    font-size:1.5rem;
+    margin-bottom:14px;
+  }
+  footer .shimmer{ max-width:160px; margin-bottom:22px; }
+  .footer-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+    margin-top:28px;
+  }
+  @media (max-width:600px){ .footer-grid{ grid-template-columns:1fr; } }
+  .footer-grid h4{
+    font-family:'Barlow Condensed', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    font-size:0.8rem;
+    color:var(--gold-soft);
+    margin:0 0 8px;
+  }
+  .footer-grid p, .footer-grid a{
+    color:rgba(250,244,234,0.75);
+    font-size:0.92rem;
+    text-decoration:none;
+    margin:0 0 4px;
+    display:block;
+  }
+  .footer-fine{
+    margin-top:36px;
+    padding-top:20px;
+    border-top:1px solid rgba(250,244,234,0.15);
+    font-size:0.8rem;
+    color:rgba(250,244,234,0.45);
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="header-inner">
+    <div class="wordmark">Shiny <span>Shades</span></div>
+    <nav class="desktop-nav">
+      <a href="#privacy" data-nav>Privacy</a>
+      <a href="#order" data-nav>Order</a>
+      <a href="#delivery" data-nav>Delivery</a>
+      <a href="#checking" data-nav>Checking</a>
+      <a href="#return" data-nav>Return</a>
+      <a href="#page" data-nav>Page</a>
+    </nav>
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false"><span></span></button>
+  </div>
+  <div id="mobile-drawer">
+    <a href="#privacy" data-nav>Privacy Policy</a>
+    <a href="#order" data-nav>Order Policy</a>
+    <a href="#delivery" data-nav>Delivery Policy</a>
+    <a href="#checking" data-nav>Checking Policy</a>
+    <a href="#return" data-nav>Return & Exchange</a>
+    <a href="#page" data-nav>Page Policy</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Shiny Shades · Policies</div>
+    <h1>Our promise, in writing.</h1>
+    <div class="shimmer"></div>
+    <p class="lead">How we collect and protect your information, how orders are confirmed and delivered across Bangladesh, and what to expect if something needs to be checked, exchanged, or returned.</p>
+    <div class="hero-meta">
+      <a href="#privacy">Privacy</a>
+      <a href="#order">Order</a>
+      <a href="#delivery">Delivery</a>
+      <a href="#checking">Checking</a>
+      <a href="#return">Return &amp; Exchange</a>
+      <a href="#page">Page</a>
+    </div>
+    <div class="hero-date">Effective from 8 August 2026 · Last updated 8 August 2026</div>
+  </div>
+</section>
+
+<main>
+
+  <section class="policy" id="privacy">
+    <div class="policy-head">
+      <span class="policy-index">01</span>
+      <h2>Privacy Policy</h2>
+    </div>
+    <p class="policy-intro">What we collect when you shop with Shiny Shades, and how it's used.</p>
+    <div class="policy-body">
+      <h3>Information we collect</h3>
+      <ul>
+        <li>Your name, phone number, and delivery address, given when you place an order.</li>
+        <li>Email address, if you provide one for order updates or newsletters.</li>
+        <li>Order history — items purchased, sizes, colours, and order value.</li>
+        <li>Messages you send us on Facebook, Instagram, or WhatsApp, kept for order support and quality checks.</li>
+      </ul>
+      <h3>How it's used</h3>
+      <ul>
+        <li>To confirm, process, and deliver your order.</li>
+        <li>To send order updates by SMS, call, or Messenger.</li>
+        <li>To respond to questions, complaints, and return requests.</li>
+        <li>To understand which products customers prefer, so we can stock better.</li>
+      </ul>
+      <h3>Payments</h3>
+      <p>We do not see or store your bKash, Nagad, or card PIN and OTP. Mobile financial service and card payments are processed directly by bKash, Nagad, or the relevant payment gateway under their own security systems.</p>
+      <h3>Cookies and tracking</h3>
+      <p>Our website and Facebook Page may use tools such as the Meta Pixel or Google Analytics to see which products are viewed, so pages load faster and the products shown to you are more relevant. You can disable cookies in your browser settings at any time; some site features may work less smoothly if you do.</p>
+      <h3>Who we share it with</h3>
+      <p>Only our delivery partners — such as Pathao, Steadfast, RedX, or Sundarban Courier — receive your name, phone number, and address, and only to complete delivery of your order. We do not sell or rent customer information to any third party.</p>
+      <h3>Your rights</h3>
+      <p>You can ask us to show, correct, or delete the personal information we hold about you at any time by messaging our Page or writing to the email address below. We'll respond within a reasonable time.</p>
+      <div class="note">This policy may be updated as our systems or the law changes. The version published on this page is always the one that applies.</div>
+    </div>
+  </section>
+
+  <section class="policy" id="order">
+    <div class="policy-head">
+      <span class="policy-index">02</span>
+      <h2>Order Policy</h2>
+    </div>
+    <p class="policy-intro">How an order becomes confirmed, priced, and ready for dispatch.</p>
+    <div class="policy-body">
+      <h3>Confirmation</h3>
+      <p>An order is confirmed only after you reply "confirm" to the order summary sent by our team in Messenger/WhatsApp, or after any required advance payment is received. An item added to cart or messaged as an inquiry is not yet a confirmed order.</p>
+      <h3>Pricing and stock</h3>
+      <p>All prices are shown in Bangladeshi Taka (৳) and include VAT where applicable. Stock is limited and not reserved until an order is confirmed. If an item sells out after your order is confirmed, we will inform you and offer a similar alternative, a size/colour swap, or a full refund of any advance paid.</p>
+      <h3>Advance payment</h3>
+      <p>Certain pre-order, made-to-measure, or high-value items require a partial advance (typically ৳100–৳200) via bKash/Nagad to confirm the order. This amount is adjusted against your final bill and is non-refundable if you cancel after confirmation for a reason not related to our error.</p>
+      <h3>Processing time</h3>
+      <p>Confirmed orders are packed and handed to our courier partner within 1–3 working days, excluding public holidays and religious festivals.</p>
+      <h3>Cancellation</h3>
+      <p>You may cancel a confirmed order free of charge any time before it is handed to the courier, by messaging our Page. Once an order has been dispatched, a cancellation is treated as a return and the <a href="#return">Return &amp; Exchange Policy</a> applies; delivery charges already incurred are non-refundable.</p>
+      <div class="note">Bulk or reseller orders require prior written confirmation of quantity, pricing, and delivery timeline before we accept them.</div>
+    </div>
+  </section>
+
+  <section class="policy" id="delivery">
+    <div class="policy-head">
+      <span class="policy-index">03</span>
+      <h2>Delivery Policy</h2>
+    </div>
+    <p class="policy-intro">Where we deliver, how long it takes, and what it costs.</p>
+    <div class="policy-body">
+      <h3>Coverage</h3>
+      <p>We deliver across Bangladesh — inside Dhaka via Pathao or Steadfast, and outside Dhaka via Sundarban Courier, SA Paribahan, or RedX, depending on the destination.</p>
+      <h3>Delivery time</h3>
+      <ul>
+        <li><strong>Inside Dhaka:</strong> 1–3 working days after dispatch.</li>
+        <li><strong>Outside Dhaka:</strong> 3–6 working days after dispatch.</li>
+        <li><strong>Remote or hard-to-reach areas:</strong> may take longer; we'll let you know if that applies to you.</li>
+      </ul>
+      <h3>Delivery charge</h3>
+      <p>Delivery charges are shown at checkout or confirmed by our team before you confirm your order, and vary by weight and destination. Orders above a set value may qualify for free or discounted delivery, announced from time to time on our Page.</p>
+      <h3>Cash on Delivery (COD)</h3>
+      <p>COD is available nationwide. Payment is collected by the courier at the point of delivery.</p>
+      <h3>Delivery attempts</h3>
+      <p>Our courier will attempt delivery up to twice. If you are unreachable both times, the parcel is returned to us and repeat non-collection may affect your ability to place future COD orders with us.</p>
+      <div class="note">Weather, transport strikes (hartal), and festival rush periods such as Eid can extend delivery times beyond the estimates above. We'll notify affected customers where possible.</div>
+    </div>
+  </section>
+
+  <section class="policy" id="checking">
+    <div class="policy-head">
+      <span class="policy-index">04</span>
+      <h2>Checking Policy</h2>
+    </div>
+    <p class="policy-intro">What "checking the parcel" means, and what it doesn't.</p>
+    <div class="policy-body">
+      <h3>What you can check</h3>
+      <p>For Cash on Delivery orders, you may open the parcel in front of the delivery person before paying, to verify that the correct item, size, and colour were sent and that there is no visible damage or defect.</p>
+      <h3>What checking does not include</h3>
+      <p>Checking is a visual verification only — it does not include trying on the garment, removing tags, or washing. Doing so is treated as acceptance of the item and voids any later claim.</p>
+      <h3>If everything matches</h3>
+      <p>If the item matches your order and shows no visible fault, payment must be completed at the point of delivery. Refusing a correct, undamaged item after checking it is treated as a failed delivery and may be subject to a return-shipping charge on your next order.</p>
+      <h3>If something is wrong</h3>
+      <p>If the wrong item, size, or colour was sent, or the item is damaged, you may refuse it and hand it straight back to the delivery person at no cost to you. We will then arrange a free replacement or a full refund.</p>
+      <div class="note">Prepaid (non-COD) orders are not opened in front of the courier. Any issue with a prepaid order is handled under the Return &amp; Exchange Policy once received, and an unboxing video is required as proof.</div>
+    </div>
+  </section>
+
+  <section class="policy" id="return">
+    <div class="policy-head">
+      <span class="policy-index">05</span>
+      <h2>Return &amp; Exchange Policy</h2>
+    </div>
+    <p class="policy-intro">Genuine issues are fixed quickly; change-of-mind returns follow clear terms.</p>
+    <div class="policy-body">
+      <h3>Time window</h3>
+      <p>Exchange or return requests are accepted within 24–48 hours of delivery, for a wrong size, wrong item sent, or a manufacturing defect.</p>
+      <h3>Condition of the item</h3>
+      <p>Returned items must be unused, unwashed, unworn, with the original tag and packaging intact. Items that show signs of wear cannot be accepted.</p>
+      <h3>Not eligible for return</h3>
+      <ul>
+        <li>Innerwear and intimate apparel, for hygiene reasons.</li>
+        <li>Sale, clearance, or "final stock" items, unless faulty.</li>
+        <li>Made-to-measure or altered pieces.</li>
+        <li>Items damaged after delivery through customer use.</li>
+      </ul>
+      <h3>Proof required</h3>
+      <p>An unboxing video showing the sealed parcel being opened is required for any claim of a defect or wrong item sent. Claims without this proof may be declined.</p>
+      <h3>Who pays for return shipping</h3>
+      <p>If the fault is ours — wrong item sent or a manufacturing defect — we cover the return delivery cost. If the return is for a personal reason such as a size or colour change, the customer covers the return delivery cost.</p>
+      <h3>Refunds</h3>
+      <p>Once the returned item is received and inspected, refunds are issued to the original payment method or as store credit within 5–7 working days.</p>
+    </div>
+  </section>
+
+  <section class="policy" id="page">
+    <div class="policy-head">
+      <span class="policy-index">06</span>
+      <h2>Page Policy</h2>
+    </div>
+    <p class="policy-intro">How we manage our Facebook, Instagram, and WhatsApp presence.</p>
+    <div class="policy-body">
+      <h3>Official channels only</h3>
+      <p>Orders are confirmed only through the official Shiny Shades Facebook Page, Instagram Page, our listed WhatsApp number, or our website — never through personal profiles, comment-section resellers, or unofficial "agents." We are not responsible for orders placed outside these channels.</p>
+      <h3>Comments and community conduct</h3>
+      <p>Questions and honest feedback are always welcome. Comments that are abusive, spam, or defamatory toward the brand, staff, or other customers will be hidden or the user blocked, at our discretion.</p>
+      <h3>Keep sensitive information private</h3>
+      <p>Never share your bKash/Nagad PIN, OTP, or card number in comments or messages. Shiny Shades will never ask for this information — treat any such request as fraudulent and report it to us immediately.</p>
+      <h3>Response time</h3>
+      <p>Messages are answered during business hours, 10:00 AM – 8:00 PM, Saturday to Thursday. Responses on Fridays and public holidays may be delayed.</p>
+      <h3>Content ownership</h3>
+      <p>Photos and videos posted by Shiny Shades belong to the brand. Customer photos or reviews may be reshared on our Page with credit, unless you ask us not to.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <h2>Questions about any policy?</h2>
+    <div class="shimmer"></div>
+    <div class="footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <a href="mailto:hello@shinyshades.example">hello@shinyshades.example</a>
+        <a href="tel:+8801XXXXXXXXX">+880 1XX-XXXXXXX</a>
+        <p>Dhaka, Bangladesh</p>
+      </div>
+      <div>
+        <h4>Reach us</h4>
+        <a href="#">Facebook Page</a>
+        <a href="#">Instagram</a>
+        <a href="#">WhatsApp</a>
+      </div>
+    </div>
+    <div class="footer-fine">© 2026 Shiny Shades. These policies may be updated without prior notice — the version published on this page is the one that applies to your order. Placeholder contact details above should be replaced with your real ones.</div>
+  </div>
+</footer>
+
+<script>
+  const menuBtn = document.getElementById('menuBtn');
+  menuBtn.addEventListener('click', () => {
+    const open = document.body.classList.toggle('drawer-open');
+    menuBtn.setAttribute('aria-expanded', open);
+  });
+  document.querySelectorAll('#mobile-drawer a').forEach(a=>{
+    a.addEventListener('click', ()=> document.body.classList.remove('drawer-open'));
+  });
+
+  const navLinks = document.querySelectorAll('[data-nav]');
+  const sections = document.querySelectorAll('section.policy');
+  const observer = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        navLinks.forEach(l=>l.classList.remove('active'));
+        document.querySelectorAll(`[data-nav][href="#${entry.target.id}"]`).forEach(l=>l.classList.add('active'));
+      }
+    });
+  }, { rootMargin: '-40% 0px -50% 0px' });
+  sections.forEach(s=>observer.observe(s));
+</script>
+
+</body>
+</html>
