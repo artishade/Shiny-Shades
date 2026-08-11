@@ -68,6 +68,8 @@ function rowToProduct(item: any): Product {
     stock: Number(item.stock) || 0,
     sku: item.sku || '',
     tags: item.tags || [],
+    seoTitle: item.seo_title || '',
+    seoKeywords: item.seo_keywords || '',
     isFeatured: item.is_featured || false,
     isTrending: item.is_trending || false,
     isNewArrival: item.is_new_arrival || false,

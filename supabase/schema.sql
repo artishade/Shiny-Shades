@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS products (
   category_name TEXT,
   category_slug TEXT,
   sku TEXT UNIQUE,
+  seo_title TEXT,
+  seo_keywords TEXT,
   stock INTEGER DEFAULT 0,
   is_featured BOOLEAN DEFAULT FALSE,
   is_trending BOOLEAN DEFAULT FALSE,

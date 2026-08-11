@@ -42,7 +42,7 @@ export const DEFAULT_PDF_SETTINGS: PdfSettings = {
     showOrderNotes: true,
     showPaymentInfo: true,
     primaryColor: BRAND.colors.primary,
-    accentColor: BRAND.colors.dark,
+    accentColor: BRAND.colors.primaryDark,
     logoUrl: BRAND.logoUrl,
     companyName: BRAND.fullName,
     companyAddress: CONTACT.address,

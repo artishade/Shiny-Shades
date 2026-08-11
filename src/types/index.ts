@@ -20,6 +20,10 @@ export interface Product {
   stock: number;
   sku: string;
   tags: string[];
+  /** Custom SEO meta title — used only in <title>/meta tags, never shown on page */
+  seoTitle?: string;
+  /** Custom SEO meta keywords — used only in <meta name="keywords">, never shown on page */
+  seoKeywords?: string;
   customText?: string;
   isFeatured: boolean;
   isTrending: boolean;

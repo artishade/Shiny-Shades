@@ -910,6 +910,7 @@ const emptyProduct: any = {
   price: 0, comparePrice: undefined, images: [],
   category: '', categorySlug: '',
   sizes: [], colors: [], stock: 150, sku: '', tags: [],
+  seoTitle: '', seoKeywords: '',
   isFeatured: false, isTrending: false, isNewArrival: false, isOnSale: false,
   customText: '',
 };
@@ -1121,6 +1122,8 @@ export const AdminProducts: React.FC = () => {
       colors: product.colors || [],
       sizes: product.sizes || [],
       tags: product.tags || [],
+      seoTitle: product.seoTitle || '',
+      seoKeywords: product.seoKeywords || (Array.isArray(product.tags) ? product.tags.join(', ') : ''),
     });
     setShowModal(true);
   };
@@ -1258,6 +1261,8 @@ export const AdminProducts: React.FC = () => {
         stock: form.stock || 0,
         sku: form.sku || null,
         tags: form.tags || [],
+        seo_title: form.seoTitle?.trim() || null,
+        seo_keywords: (form.seoKeywords?.trim() || (Array.isArray(form.tags) ? form.tags.join(', ') : '')) || null,
         custom_text: form.customText || '',
         is_featured: form.isFeatured || false,
         is_trending: form.isTrending || false,
@@ -1491,23 +1496,13 @@ export const AdminProducts: React.FC = () => {
               placeholder="e.g. Silk Evening Gown"
             />
             <div>
-              <label className="block text-sm font-medium text-[#6B5B55] mb-1.5">SKU (auto-generated)</label>
-              <div className="flex gap-2">
-                <input
-                  value={form.sku || ''}
-                  onChange={e => setForm({ ...form, sku: e.target.value })}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30"
-                  placeholder="Auto-filled from name"
-                />
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, sku: generateSKU(form.name || '') })}
-                  className="px-3 py-2 rounded-xl bg-blush-light hover:bg-blush transition-colors"
-                  title="Regenerate SKU"
-                >
-                  <RefreshCw size={14} className="text-[#6B5B55]" />
-                </button>
-              </div>
+              <Input
+                label="SEO Title"
+                value={form.seoTitle || ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, seoTitle: e.target.value })}
+                placeholder="e.g. Buy Silk Evening Gown Online — Shiny Shades"
+              />
+              <p className="text-[10px] text-[#6B5B55]/70 mt-1">Hidden from shoppers — used as the Google/SEO page title.</p>
             </div>
             <Input
               label="Price ($)"
@@ -1536,6 +1531,26 @@ export const AdminProducts: React.FC = () => {
               value={form.stock?.toString() || ''}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })}
             />
+          </div>
+
+          {/* ── SKU (minimized — auto-generated) ── */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blush-light/30 border border-blush/20">
+            <span className="text-[11px] font-medium text-[#6B5B55] whitespace-nowrap">SKU</span>
+            <input
+              value={form.sku || ''}
+              onChange={e => setForm({ ...form, sku: e.target.value })}
+              className="flex-1 px-2.5 py-1.5 rounded-lg border border-blush/30 bg-white/80 text-xs font-mono text-charcoal focus:outline-none focus:ring-1 focus:ring-rose-gold/30 min-w-0"
+              placeholder="Auto-generated from name"
+            />
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, sku: generateSKU(form.name || '') })}
+              className="p-1.5 rounded-lg hover:bg-blush transition-colors flex-shrink-0"
+              title="Regenerate SKU"
+            >
+              <RefreshCw size={13} className="text-[#6B5B55]" />
+            </button>
+            <span className="text-[10px] text-[#6B5B55]/60 whitespace-nowrap">auto ✓</span>
           </div>
 
           {/* ── EXISTING IMAGES (Edit Mode) ── */}
@@ -2408,14 +2423,18 @@ export const AdminProducts: React.FC = () => {
             )}
           </div>
 
-          {/* ── Tags ── */}
+          {/* ── SEO Keywords (hidden from public view) ── */}
           <div>
-            <label className="block text-sm font-medium text-[#6B5B55] mb-1.5">Tags (comma separated)</label>
+            <label className="block text-sm font-medium text-[#6B5B55] mb-0.5">SEO Keywords (comma separated)</label>
+            <p className="text-[10px] text-[#6B5B55]/70 mb-1.5">Hidden from shoppers — used for search-engine keywords & product search.</p>
             <input
               value={(form.tags || []).join(', ')}
-              onChange={e => setForm({ ...form, tags: e.target.value.split(',').map((t: string) => t.trim()).filter(Boolean) })}
+              onChange={e => {
+                const words = e.target.value.split(',').map((t: string) => t.trim()).filter(Boolean);
+                setForm({ ...form, tags: words, seoKeywords: e.target.value });
+              }}
               className="w-full px-4 py-2.5 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30"
-              placeholder="e.g. silk, evening, luxury"
+              placeholder="e.g. silk, evening, luxury, elegant"
             />
           </div>
 

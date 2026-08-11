@@ -183,6 +183,8 @@ const normalise = (p: any): Product => ({
   stock: Number(p.stock) || 0,
   sku: p.sku || '',
   tags: p.tags || [],
+  seoTitle: p.seo_title || '',
+  seoKeywords: p.seo_keywords || '',
   customText: p.custom_text || '',
   isFeatured: p.is_featured || false,
   isTrending: p.is_trending || false,
@@ -413,7 +415,10 @@ export const ProductDetailPage: React.FC = () => {
     if (!product) return null;
 
     const canonical = `${ORIGIN}/product/${product.slug}`;
-    const pageTitle = `${product.name} | ${BRAND.fullName}`;
+    // Custom SEO title (set in admin — hidden from shoppers) — otherwise fall back to "Product | Brand"
+    const pageTitle = product.seoTitle?.trim()
+      ? product.seoTitle.trim()
+      : `${product.name} | ${BRAND.fullName}`;
 
     const stockInfo = getStockInfo(product.stock);
     const priceStr = product.comparePrice
@@ -428,11 +433,13 @@ export const ProductDetailPage: React.FC = () => {
       ? rawDesc.slice(0, 155)
       : `Buy ${product.name} at ${BRAND.fullName}. ${priceStr}. ${stockInfo.message}.${reviewStr}`;
 
-    const keywords = [
+    // Custom SEO keywords (set in admin — hidden from shoppers) — otherwise auto-generate
+    const autoKeywords = [
       product.name, product.category, BRAND.fullName,
       `buy ${product.name}`, `${product.name} Bangladesh`,
       ...(product.tags || []),
     ].filter(Boolean).join(', ');
+    const keywords = product.seoKeywords?.trim() || autoKeywords;
 
     const ogImage = product.images[0]?.startsWith('http')
       ? getOptimizedImageUrl(product.images[0], 1200, 85)
