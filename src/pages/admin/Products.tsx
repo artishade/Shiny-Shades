@@ -19,9 +19,72 @@ import { UploadCloud } from 'lucide-react';
 import { GripVertical } from 'lucide-react';
 import { useContentStore } from '@/store';
 // ─────────────────────────────────────────────────
+// WATERMARK PANEL SETTINGS — "last usage" defaults
+// Persisted to localStorage so the next product upload
+// starts with the same watermark state the admin used
+// last time (on/off toggle + position + all options).
+// ─────────────────────────────────────────────────
+const WM_SETTINGS_LS_KEY = 'ag_wm_panel_settings_v1';
+
+interface WmPanelSettings {
+  wmEnabled: boolean;
+  wmSize: number;
+  wmPos: { xFrac: number; yFrac: number };
+  textWmEnabled: boolean;
+  textWmText: string;
+  textWmOpacity: number;
+  textWmSize: number;
+  textWmAngle: number;
+  textWmColor: string;
+  textWmSpacingX: number;
+  textWmSpacingY: number;
+  agLogoText: string;
+  agLogoColorLeft: string;
+  agLogoColorRight: string;
+}
+
+const DEFAULT_WM_SETTINGS: WmPanelSettings = {
+  wmEnabled: true,
+  wmSize: 1.0,
+  wmPos: { xFrac: 0.82, yFrac: 0.90 },
+  textWmEnabled: true,
+  textWmText: BRAND.watermarkText,
+  textWmOpacity: 0.18,
+  textWmSize: 22,
+  textWmAngle: -30,
+  textWmColor: '#ffffff',
+  textWmSpacingX: 180,
+  textWmSpacingY: 90,
+  agLogoText: 'TEXT',
+  agLogoColorLeft: '#000000ff',
+  agLogoColorRight: '#5c0404ff',
+};
+
+const loadWmSettings = (): WmPanelSettings => {
+  try {
+    if (typeof localStorage === 'undefined') return { ...DEFAULT_WM_SETTINGS };
+    const raw = localStorage.getItem(WM_SETTINGS_LS_KEY);
+    if (!raw) return { ...DEFAULT_WM_SETTINGS };
+    return { ...DEFAULT_WM_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_WM_SETTINGS };
+  }
+};
+
+const saveWmSettings = (s: WmPanelSettings) => {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(WM_SETTINGS_LS_KEY, JSON.stringify(s));
+  } catch { }
+};
+
+// Loaded once at module scope — used as initial state defaults
+const INITIAL_WM_SETTINGS = loadWmSettings();
+
+// ─────────────────────────────────────────────────
 // WATERMARK POSITION — module-level mutable ref
 // ─────────────────────────────────────────────────
-let wmPos: { xFrac: number; yFrac: number } = { xFrac: 0.82, yFrac: 0.90 };
+let wmPos: { xFrac: number; yFrac: number } = INITIAL_WM_SETTINGS.wmPos;
 
 // ─────────────────────────────────────────────────
 // FASHION COLOR MAP — 50+ names → real hex values
@@ -937,23 +1000,23 @@ export const AdminProducts: React.FC = () => {
   // Drag-to-reorder state — works for ALL images including cover (index 0)
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [wmFrac, setWmFrac] = useState<{ xFrac: number; yFrac: number }>({ xFrac: 0.82, yFrac: 0.90 });
-  const [wmSize, setWmSize] = useState<number>(1.0);
+  const [wmFrac, setWmFrac] = useState<{ xFrac: number; yFrac: number }>(INITIAL_WM_SETTINGS.wmPos);
+  const [wmSize, setWmSize] = useState<number>(INITIAL_WM_SETTINGS.wmSize);
   const [colorInput, setColorInput] = useState('');
   const [sizeInput, setSizeInput] = useState('');
-  const [wmEnabled, setWmEnabled] = useState<boolean>(true);
+  const [wmEnabled, setWmEnabled] = useState<boolean>(INITIAL_WM_SETTINGS.wmEnabled);
   const [wmPanelOpen, setWmPanelOpen] = useState<boolean>(false);
-  const [textWmEnabled, setTextWmEnabled] = useState<boolean>(true);
-  const [textWmText, setTextWmText] = useState<string>(BRAND.watermarkText);
-  const [textWmOpacity, setTextWmOpacity] = useState<number>(0.18);
-  const [textWmSize, setTextWmSize] = useState<number>(22);
-  const [textWmAngle, setTextWmAngle] = useState<number>(-30);
-  const [textWmColor, setTextWmColor] = useState<string>('#ffffff');
-  const [textWmSpacingX, setTextWmSpacingX] = useState<number>(180);
-  const [textWmSpacingY, setTextWmSpacingY] = useState<number>(90);
-  const [agLogoText, setAgLogoText] = useState<string>('TEXT');
-  const [agLogoColorLeft, setAgLogoColorLeft] = useState<string>('#000000ff');
-  const [agLogoColorRight, setAgLogoColorRight] = useState<string>('#5c0404ff');
+  const [textWmEnabled, setTextWmEnabled] = useState<boolean>(INITIAL_WM_SETTINGS.textWmEnabled);
+  const [textWmText, setTextWmText] = useState<string>(INITIAL_WM_SETTINGS.textWmText);
+  const [textWmOpacity, setTextWmOpacity] = useState<number>(INITIAL_WM_SETTINGS.textWmOpacity);
+  const [textWmSize, setTextWmSize] = useState<number>(INITIAL_WM_SETTINGS.textWmSize);
+  const [textWmAngle, setTextWmAngle] = useState<number>(INITIAL_WM_SETTINGS.textWmAngle);
+  const [textWmColor, setTextWmColor] = useState<string>(INITIAL_WM_SETTINGS.textWmColor);
+  const [textWmSpacingX, setTextWmSpacingX] = useState<number>(INITIAL_WM_SETTINGS.textWmSpacingX);
+  const [textWmSpacingY, setTextWmSpacingY] = useState<number>(INITIAL_WM_SETTINGS.textWmSpacingY);
+  const [agLogoText, setAgLogoText] = useState<string>(INITIAL_WM_SETTINGS.agLogoText);
+  const [agLogoColorLeft, setAgLogoColorLeft] = useState<string>(INITIAL_WM_SETTINGS.agLogoColorLeft);
+  const [agLogoColorRight, setAgLogoColorRight] = useState<string>(INITIAL_WM_SETTINGS.agLogoColorRight);
   const [hasEyeDropper] = useState(() => typeof (window as any).EyeDropper !== 'undefined');
   const [detectedColors, setDetectedColors] = useState<string[]>([]);
   const [detectingColors, setDetectingColors] = useState(false);
@@ -964,6 +1027,16 @@ export const AdminProducts: React.FC = () => {
 
   // Persist custom logo wm config whenever it changes
   useEffect(() => { saveCustomLogoWmToLS(customLogoWm); }, [customLogoWm]);
+
+  // ── Persist watermark panel settings — next upload uses "last usage" ──
+  useEffect(() => {
+    saveWmSettings({
+      wmEnabled, wmSize, wmPos: wmFrac,
+      textWmEnabled, textWmText, textWmOpacity, textWmSize, textWmAngle,
+      textWmColor, textWmSpacingX, textWmSpacingY,
+      agLogoText, agLogoColorLeft, agLogoColorRight,
+    });
+  }, [wmEnabled, wmSize, wmFrac, textWmEnabled, textWmText, textWmOpacity, textWmSize, textWmAngle, textWmColor, textWmSpacingX, textWmSpacingY, agLogoText, agLogoColorLeft, agLogoColorRight]);
 
   const updateCustomLogoWm = (patch: Partial<CustomLogoWmConfig>) => {
     setCustomLogoWm(prev => ({ ...prev, ...patch }));
@@ -1081,16 +1154,30 @@ export const AdminProducts: React.FC = () => {
   });
 
   const resetModal = () => {
+    // Load the last-used watermark settings so the next upload
+    // defaults to whatever the admin used before (on/off + options)
+    const savedWm = loadWmSettings();
     setImageFiles([]);
     setVideoFile(null);
     setVideoPreviewUrl('');
     setColorInput('');
     setSizeInput('');
     setUploadProgress(null);
-    wmPos = { xFrac: 0.82, yFrac: 0.90 };
-    setWmFrac({ xFrac: 0.82, yFrac: 0.90 });
-    setWmSize(1.0);
-    setWmEnabled(true);
+    wmPos = { ...savedWm.wmPos };
+    setWmFrac({ ...savedWm.wmPos });
+    setWmSize(savedWm.wmSize);
+    setWmEnabled(savedWm.wmEnabled);
+    setTextWmEnabled(savedWm.textWmEnabled);
+    setTextWmText(savedWm.textWmText);
+    setTextWmOpacity(savedWm.textWmOpacity);
+    setTextWmSize(savedWm.textWmSize);
+    setTextWmAngle(savedWm.textWmAngle);
+    setTextWmColor(savedWm.textWmColor);
+    setTextWmSpacingX(savedWm.textWmSpacingX);
+    setTextWmSpacingY(savedWm.textWmSpacingY);
+    setAgLogoText(savedWm.agLogoText);
+    setAgLogoColorLeft(savedWm.agLogoColorLeft);
+    setAgLogoColorRight(savedWm.agLogoColorRight);
     setWmPanelOpen(false);
     setDetectedColors([]);
     setDetectingColors(false);
