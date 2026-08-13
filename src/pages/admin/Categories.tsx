@@ -107,6 +107,43 @@ const ImagePicker: React.FC<{
   );
 };
 
+// ── Single category card — reused for both top-level and subcategory rows ──
+const CategoryCard: React.FC<{
+  cat: Category;
+  onEdit: (cat: Category) => void;
+  onDelete: (id: string) => void;
+  isSub?: boolean;
+}> = ({ cat, onEdit, onDelete, isSub }) => (
+  <div className={`glass-card rounded-2xl overflow-hidden ${isSub ? 'opacity-90' : ''}`}>
+    <div
+      className="h-32 w-full relative"
+      style={
+        cat.image
+          ? { backgroundImage: `url(${cat.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+          : { background: cat.gradient }
+      }
+    />
+    <div className="p-4">
+      <h3 className="font-semibold text-charcoal">{cat.name}</h3>
+      <p className="text-sm text-[#6B5B55] mt-1 line-clamp-2">{cat.description}</p>
+      <p className="text-xs text-[#6B5B55] mt-2">{cat.productCount} products</p>
+      <div className="flex gap-2 mt-3">
+        <Button size="sm" variant="ghost" onClick={() => onEdit(cat)}>
+          <Edit2 size={14} /> Edit
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="!text-red-500 hover:!bg-red-50"
+          onClick={() => onDelete(cat.id)}
+        >
+          <Trash2 size={14} />
+        </Button>
+      </div>
+    </div>
+  </div>
+);
+
 // ── Main component ─────────────────────────────────────────────────────────
 export const AdminCategories: React.FC = () => {
   const { categories, addCategory, updateCategory, deleteCategory } = useCategoryStore();
@@ -120,11 +157,13 @@ export const AdminCategories: React.FC = () => {
     description: string;
     gradient: string;
     image: string;   // ← single Supabase public URL
+    parentId: string; // '' = top-level (no parent)
   }>({
     name: '',
     description: '',
     gradient: 'linear-gradient(135deg, #F4C2C2, #E6E6FA)',
     image: '',
+    parentId: '',
   });
 
   const gradients = [
@@ -139,7 +178,7 @@ export const AdminCategories: React.FC = () => {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ name: '', description: '', gradient: gradients[0], image: '' });
+    setForm({ name: '', description: '', gradient: gradients[0], image: '', parentId: '' });
     setSaveError('');
     setShowModal(true);
   };
@@ -151,6 +190,7 @@ export const AdminCategories: React.FC = () => {
       description: cat.description,
       gradient: cat.gradient,
       image: cat.image ?? '',
+      parentId: cat.parentId ?? '',
     });
     setSaveError('');
     setShowModal(true);
@@ -174,6 +214,7 @@ export const AdminCategories: React.FC = () => {
           description: form.description,
           gradient: form.gradient,
           image: form.image,
+          parentId: form.parentId || null,
         });
       } else {
         await addCategory({
@@ -184,6 +225,7 @@ export const AdminCategories: React.FC = () => {
           image: form.image,
           productCount: 0,
           gradient: form.gradient,
+          parentId: form.parentId || null,
         });
       }
       setShowModal(false);
@@ -213,40 +255,33 @@ export const AdminCategories: React.FC = () => {
         </Button>
       </div>
 
-      {/* Category cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((cat) => (
-          <div key={cat.id} className="glass-card rounded-2xl overflow-hidden">
-            {/* Image or gradient header */}
-            <div
-              className="h-32 w-full relative"
-              style={
-                cat.image
-                  ? { backgroundImage: `url(${cat.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : { background: cat.gradient }
-              }
-            />
-
-            <div className="p-4">
-              <h3 className="font-semibold text-charcoal">{cat.name}</h3>
-              <p className="text-sm text-[#6B5B55] mt-1 line-clamp-2">{cat.description}</p>
-              <p className="text-xs text-[#6B5B55] mt-2">{cat.productCount} products</p>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" variant="ghost" onClick={() => openEdit(cat)}>
-                  <Edit2 size={14} /> Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="!text-red-500 hover:!bg-red-50"
-                  onClick={() => handleDelete(cat.id)}
-                >
-                  <Trash2 size={14} />
-                </Button>
+      {/* Category cards — top-level categories, each with its subcategories nested below */}
+      <div className="space-y-8">
+        {categories.filter((c) => !c.parentId).map((parent) => {
+          const children = categories.filter((c) => c.parentId === parent.id);
+          return (
+            <div key={parent.id}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <CategoryCard cat={parent} onEdit={openEdit} onDelete={handleDelete} />
               </div>
+
+              {children.length > 0 && (
+                <div className="mt-3 pl-4 md:pl-8 border-l-2 border-blush/30">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#6B5B55]/70 mb-3">
+                    Subcategories of {parent.name}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {children.map((child) => (
+                      <CategoryCard key={child.id} cat={child} onEdit={openEdit} onDelete={handleDelete} isSub />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
+
+        {/* Orphan subcategories — parent was deleted but child kept its parent_id nulled by ON DELETE SET NULL, so this shouldn't normally happen */}
       </div>
 
       {/* Add / Edit Modal */}
@@ -271,6 +306,26 @@ export const AdminCategories: React.FC = () => {
               className="w-full px-4 py-2.5 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30 resize-none"
               rows={3}
             />
+          </div>
+
+          {/* Parent category — leave as "None" for a top-level category */}
+          <div>
+            <label className="block text-sm font-medium text-[#6B5B55] mb-1.5">
+              Parent Category{' '}
+              <span className="text-[#6B5B55]/60 font-normal">(optional — makes this a subcategory)</span>
+            </label>
+            <select
+              value={form.parentId}
+              onChange={(e) => setForm({ ...form, parentId: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30"
+            >
+              <option value="">None — top-level category</option>
+              {categories
+                .filter((c) => c.id !== editingId && !c.parentId) // only top-level categories can be a parent; can't parent itself
+                .map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+            </select>
           </div>
 
           {/* Image upload — uploads to Supabase on selection */}

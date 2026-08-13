@@ -9,7 +9,9 @@ import { BRAND } from '@/config/brandingConfig';
 
 export const CategoryShowcase: React.FC = () => {
     const navigate = useNavigate();
-    const { categories } = useCategoryStore();
+    const { categories: allCategoriesRaw } = useCategoryStore();
+    // Homepage showcase only surfaces top-level categories; subcategories live on the category/all-categories pages
+    const categories = allCategoriesRaw.filter(cat => !cat.parentId);
     const { products } = useProductStore();  // ← add
 
     // ← add this derived list

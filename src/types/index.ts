@@ -52,6 +52,8 @@ export interface Category {
   gradient: string;
   createdAt: string;
   images?: string[];
+  /** ID of the parent category. Undefined/null = top-level category. */
+  parentId?: string | null;
 }
 
 // ===== Cart Types =====

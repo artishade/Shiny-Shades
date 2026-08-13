@@ -77,9 +77,27 @@ export const CategoryPage: React.FC = () => {
     [slug, categories],
   );
 
+  // Parent category — set when the current category is itself a subcategory
+  const parentCategory = useMemo(
+    () => (category?.parentId ? categories.find((c) => c.id === category.parentId) : undefined),
+    [category, categories],
+  );
+
+  // Subcategories of the current category — shown as filter chips
+  const subcategories = useMemo(
+    () => (category ? categories.filter((c) => c.parentId === category.id) : []),
+    [category, categories],
+  );
+
+  // When viewing a parent category, include products from all its subcategories too
+  const categorySlugs = useMemo(() => {
+    if (!category) return [];
+    return [category.slug, ...subcategories.map((c) => c.slug)];
+  }, [category, subcategories]);
+
   // ── Fetch products from Supabase ──────────────────────────────────────────
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || categorySlugs.length === 0) return;
     let cancelled = false;
 
     const fetchProducts = async () => {
@@ -88,7 +106,7 @@ export const CategoryPage: React.FC = () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('category_slug', slug)
+        .in('category_slug', categorySlugs)
         .order('created_at', { ascending: false });
 
       if (cancelled) return;
@@ -105,7 +123,7 @@ export const CategoryPage: React.FC = () => {
 
     fetchProducts();
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, categorySlugs]);
 
   // ── GTM — view_item_list (deferred so it never blocks first paint) ─────────
   useEffect(() => {
@@ -340,11 +358,22 @@ export const CategoryPage: React.FC = () => {
             </Link>
             <ChevronRight size={14} aria-hidden="true" />
             <Link
-              to="/shop"
+              to="/categories"
               className="hover:text-rose-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-gold focus-visible:ring-offset-1 rounded"
             >
-              Shop
+              Categories
             </Link>
+            {parentCategory && (
+              <>
+                <ChevronRight size={14} aria-hidden="true" />
+                <Link
+                  to={`/category/${parentCategory.slug}`}
+                  className="hover:text-rose-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-gold focus-visible:ring-offset-1 rounded"
+                >
+                  {parentCategory.name}
+                </Link>
+              </>
+            )}
             <ChevronRight size={14} aria-hidden="true" />
             <span className="text-charcoal font-medium" aria-current="page">
               {category.name}
@@ -438,6 +467,22 @@ export const CategoryPage: React.FC = () => {
               </p>
             </div>
           </div>
+
+          {/* ── Subcategory chips — only shown when this category has children ── */}
+          {subcategories.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-8" role="list" aria-label="Subcategories">
+              {subcategories.map((sub) => (
+                <Link
+                  key={sub.id}
+                  to={`/category/${sub.slug}`}
+                  role="listitem"
+                  className="px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider border border-rose-gold/30 text-charcoal hover:bg-rose-gold hover:text-white hover:border-rose-gold transition-colors"
+                >
+                  {sub.name}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* ── Product Grid ──────────────────────────────────────────────── */}
           {loading ? (

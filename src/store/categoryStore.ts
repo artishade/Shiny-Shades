@@ -14,6 +14,7 @@ function rowToCategory(row: Record<string, unknown>): Category {
     productCount: Number(row.product_count ?? 0),
     gradient: String(row.gradient ?? ''),
     createdAt: String(row.created_at ?? new Date().toISOString()),
+    parentId: row.parent_id ? String(row.parent_id) : null,
   };
 }
 
@@ -26,6 +27,7 @@ function categoryToRow(cat: Partial<Category>): Record<string, unknown> {
   if (cat.image !== undefined) row.image = cat.image;
   if (cat.productCount !== undefined) row.product_count = cat.productCount;
   if (cat.gradient !== undefined) row.gradient = cat.gradient;
+  if (cat.parentId !== undefined) row.parent_id = cat.parentId || null;
   return row;
 }
 
@@ -56,6 +58,12 @@ interface CategoryStore {
   addCategory: (category: Omit<Category, 'createdAt'>) => Promise<void>;
   updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+
+  // ── Hierarchy helpers ──────────────────────────────────────────────────────
+  /** Categories with no parent (shown on the main /categories page and navbar) */
+  getTopLevelCategories: () => Category[];
+  /** Direct children of a given category id */
+  getSubcategories: (parentId: string) => Category[];
 }
 
 export const useCategoryStore = create<CategoryStore>()((set, get) => ({
@@ -255,4 +263,8 @@ export const useCategoryStore = create<CategoryStore>()((set, get) => ({
       throw err;
     }
   },
+
+  // ── Hierarchy helpers ──────────────────────────────────────────────────────
+  getTopLevelCategories: () => get().categories.filter((c) => !c.parentId),
+  getSubcategories: (parentId) => get().categories.filter((c) => c.parentId === parentId),
 }));

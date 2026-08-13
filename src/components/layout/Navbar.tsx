@@ -99,6 +99,10 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
     return location.pathname === path;
   };
 
+  // Top-level categories only — subcategories nest underneath their parent
+  const topLevelCategories = categories.filter(cat => !cat.parentId);
+  const getChildren = (parentId: string) => categories.filter(cat => cat.parentId === parentId);
+
   const renderCategoryLinks = (onClose?: () => void) => {
     if (categoriesLoading) {
       return (
@@ -107,35 +111,65 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
         </p>
       );
     }
-    if (categories.length === 0) {
+    if (topLevelCategories.length === 0) {
       return (
         <p className="px-4 py-2 text-[10px] text-center" style={{ color: warmGray }}>
           No categories yet
         </p>
       );
     }
-    return categories.map(cat => (
-      <button
-        key={cat.id}
-        type="button"
-        onClick={() => {
-          onClose?.();
-          navigate(`/category/${cat.slug}`);
-        }}
-        className="block w-full text-left px-4 py-2 text-[10px] font-semibold tracking-wider uppercase rounded-lg transition-all duration-200"
-        style={{ color: charcoal }}
-        onMouseEnter={e => {
-          e.currentTarget.style.backgroundColor = blushLight;
-          e.currentTarget.style.color = primary;
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.backgroundColor = 'transparent';
-          e.currentTarget.style.color = charcoal;
-        }}
-      >
-        {cat.name}
-      </button>
-    ));
+    return topLevelCategories.map(cat => {
+      const children = getChildren(cat.id);
+      return (
+        <div key={cat.id}>
+          <button
+            type="button"
+            onClick={() => {
+              onClose?.();
+              navigate(`/category/${cat.slug}`);
+            }}
+            className="block w-full text-left px-4 py-2 text-[10px] font-semibold tracking-wider uppercase rounded-lg transition-all duration-200"
+            style={{ color: charcoal }}
+            onMouseEnter={e => {
+              e.currentTarget.style.backgroundColor = blushLight;
+              e.currentTarget.style.color = primary;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = charcoal;
+            }}
+          >
+            {cat.name}
+          </button>
+          {children.length > 0 && (
+            <div className="pl-3">
+              {children.map(sub => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => {
+                    onClose?.();
+                    navigate(`/category/${sub.slug}`);
+                  }}
+                  className="block w-full text-left px-4 py-1.5 text-[9px] font-medium tracking-wider uppercase rounded-lg transition-all duration-200"
+                  style={{ color: warmGray }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = blushLight;
+                    e.currentTarget.style.color = primary;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = warmGray;
+                  }}
+                >
+                  {sub.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    });
   };
 
   return (
@@ -234,10 +268,10 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
                 >
                   <button
                     type="button"
-                    onClick={() => setCategoriesOpen(o => !o)}
+                    onClick={() => navigate('/categories')}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold tracking-[0.12em] uppercase transition-colors duration-300"
                     style={{
-                      color: categoriesOpen ? primary : charcoal,
+                      color: categoriesOpen || isActive('/categories') ? primary : charcoal,
                       backgroundColor: categoriesOpen ? blushLight : 'transparent',
                     }}
                   >
@@ -262,6 +296,15 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
                           style={{ backgroundColor: softBg, borderColor: `${charcoal}14` }}
                         >
                           {renderCategoryLinks()}
+                          <div className="h-px my-1" style={{ backgroundColor: `${charcoal}14` }} />
+                          <button
+                            type="button"
+                            onClick={() => { setCategoriesOpen(false); navigate('/categories'); }}
+                            className="block w-full text-left px-4 py-2 text-[10px] font-bold tracking-wider uppercase rounded-lg transition-all duration-200"
+                            style={{ color: primary }}
+                          >
+                            View All Categories →
+                          </button>
                         </div>
                       </motion.div>
                     )}
@@ -460,6 +503,14 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
                 </p>
                 <div className="space-y-0.5 mb-5">
                   {renderCategoryLinks(() => setMobileMenuOpen(false))}
+                  <Link
+                    to="/categories"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-2 text-[10px] font-bold tracking-wider uppercase rounded-lg"
+                    style={{ color: primary }}
+                  >
+                    View All Categories →
+                  </Link>
                 </div>
 
                 <div className="h-px my-4" style={{ backgroundColor: `${charcoal}14` }} />
