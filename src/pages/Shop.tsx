@@ -1,6 +1,6 @@
 /* ===================================================
                  Shop Page
-   General collection browser with filters & sorting
+   General collection browser with dynamic filters & sorting
    =================================================== */
 
 declare global { interface Window { dataLayer: any[]; } }
@@ -11,9 +11,9 @@ import { Grid3X3, Grid2X2, SlidersHorizontal, X } from 'lucide-react';
 
 import { ProductCard } from '@/components/home';
 import { FadeIn, Button, Select } from '@/components/ui';
+import { ProductFilterPanel, extractAvailableFilters } from '@/components/shop/ProductFilter';
 import { supabase } from '@/lib/supabase';
 import { Helmet } from 'react-helmet-async';
-import { SITE } from '@/config/siteConfig';
 
 /* ─── Fisher-Yates shuffle (returns a new array) ─── */
 const shuffleArray = <T,>(arr: T[]): T[] => {
@@ -25,8 +25,34 @@ const shuffleArray = <T,>(arr: T[]): T[] => {
   return result;
 };
 
-/* ─── Size options ─── */
-const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
+// Normalize database product row into clean Product shape
+const normaliseProduct = (p: any) => ({
+  id: p.id,
+  name: p.name ?? '',
+  slug: p.slug ?? '',
+  description: p.description ?? '',
+  shortDescription: p.short_description ?? '',
+  price: Number(p.price) || 0,
+  comparePrice: p.compare_price ? Number(p.compare_price) : undefined,
+  images: Array.isArray(p.images) ? p.images : [],
+  videoUrl: p.video_url ?? '',
+  category: p.category_name ?? p.category ?? '',
+  categorySlug: p.category_slug ?? '',
+  sizes: Array.isArray(p.sizes) ? p.sizes : [],
+  colors: Array.isArray(p.colors) ? p.colors : [],
+  stock: Number(p.stock) || 0,
+  sku: p.sku ?? '',
+  tags: Array.isArray(p.tags) ? p.tags : [],
+  customText: p.custom_text ?? '',
+  isFeatured: Boolean(p.is_featured),
+  isTrending: Boolean(p.is_trending),
+  isNewArrival: Boolean(p.is_new_arrival),
+  isOnSale: Boolean(p.is_on_sale),
+  rating: Number(p.rating) || 0,
+  reviewCount: Number(p.review_count) || 0,
+  createdAt: p.created_at ?? '',
+  updatedAt: p.updated_at ?? '',
+});
 
 /* ─────────────────────────────────────────────
    MAIN SHOP PAGE
@@ -43,8 +69,10 @@ export const ShopPage: React.FC = () => {
   const searchQuery = searchParams.get('q') || '';
 
   /* ── Filter state ── */
-  const [availability, setAvailability] = useState<'all' | 'in_stock' | 'out_of_stock'>('all');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
 
   useEffect(() => {
@@ -61,20 +89,38 @@ export const ShopPage: React.FC = () => {
     if (error) {
       console.error('Error fetching products:', error);
     } else {
-      setProducts(shuffleArray(data || []));
+      const normalised = (data || []).map(normaliseProduct);
+      setProducts(shuffleArray(normalised));
+      const extracted = extractAvailableFilters(normalised);
+      setPriceRange([extracted.minPrice, extracted.maxPrice]);
     }
     setLoading(false);
   };
 
-  /* ── Derived max price ── */
-  const maxPrice = useMemo(() => {
-    if (products.length === 0) return 10000;
-    return Math.ceil(Math.max(...products.map(p => Number(p.price) || 0)) / 100) * 100 || 10000;
-  }, [products]);
+  // Available filters extracted dynamically from base product pool
+  const availableFilters = useMemo(() => extractAvailableFilters(products), [products]);
+
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
 
   const toggleSize = (size: string) => {
     setSelectedSizes(prev =>
       prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+    );
+  };
+
+  const toggleColor = (color: string) => {
+    setSelectedColors(prev =>
+      prev.includes(color) ? prev.filter(c => c !== color) : [...prev, color]
+    );
+  };
+
+  const toggleStyle = (style: string) => {
+    setSelectedStyles(prev =>
+      prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]
     );
   };
 
@@ -83,21 +129,38 @@ export const ShopPage: React.FC = () => {
 
     if (searchQuery) {
       filtered = filtered.filter(p =>
-        p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    /* Availability */
-    if (availability === 'in_stock') {
-      filtered = filtered.filter(p => (p.stock ?? 0) > 0);
-    } else if (availability === 'out_of_stock') {
-      filtered = filtered.filter(p => (p.stock ?? 0) <= 0);
+    /* Categories */
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(p => selectedCategories.includes(p.category));
     }
 
     /* Sizes */
     if (selectedSizes.length > 0) {
       filtered = filtered.filter(p =>
         Array.isArray(p.sizes) && selectedSizes.some(s => p.sizes.includes(s))
+      );
+    }
+
+    /* Colors */
+    if (selectedColors.length > 0) {
+      filtered = filtered.filter(p =>
+        Array.isArray(p.colors) &&
+        p.colors.some((c: any) => {
+          const name = typeof c === 'string' ? c : (c?.name || c?.label || c?.color || '');
+          return selectedColors.includes(name);
+        })
+      );
+    }
+
+    /* Styles / Tags */
+    if (selectedStyles.length > 0) {
+      filtered = filtered.filter(p =>
+        Array.isArray(p.tags) && selectedStyles.some(t => p.tags.includes(t))
       );
     }
 
@@ -116,16 +179,25 @@ export const ShopPage: React.FC = () => {
         filtered.sort((a, b) => Number(b.price) - Number(a.price));
         break;
       case 'featured':
-        filtered.sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0));
+        filtered.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
         break;
       case 'newest':
       default:
-        // keep shuffled order from fetchProducts
+        // keep order
         break;
     }
 
     return filtered;
-  }, [products, searchQuery, availability, selectedSizes, priceRange, sortFilter]);
+  }, [
+    products,
+    searchQuery,
+    selectedCategories,
+    selectedSizes,
+    selectedColors,
+    selectedStyles,
+    priceRange,
+    sortFilter,
+  ]);
 
   const updateSort = (sort: string) => {
     const params = new URLSearchParams(searchParams);
@@ -134,19 +206,28 @@ export const ShopPage: React.FC = () => {
   };
 
   const clearFilters = () => {
-    setSearchParams({});
-    setAvailability('all');
+    const params = new URLSearchParams(searchParams);
+    params.delete('sort');
+    setSearchParams(params);
+    setSelectedCategories([]);
     setSelectedSizes([]);
-    setPriceRange([0, maxPrice]);
+    setSelectedColors([]);
+    setSelectedStyles([]);
+    setPriceRange([availableFilters.minPrice, availableFilters.maxPrice]);
   };
 
   const pageTitle = searchQuery ? `Search: "${searchQuery}"` : 'Our Collection';
 
-  const activeFilterCount = [
-    availability !== 'all',
-    selectedSizes.length > 0,
-    priceRange[0] > 0 || priceRange[1] < maxPrice,
-  ].filter(Boolean).length;
+  const isPriceModified =
+    priceRange[0] > availableFilters.minPrice ||
+    priceRange[1] < availableFilters.maxPrice;
+
+  const activeFilterCount =
+    selectedCategories.length +
+    selectedSizes.length +
+    selectedColors.length +
+    selectedStyles.length +
+    (isPriceModified ? 1 : 0);
 
   /* GTM */
   useEffect(() => {
@@ -160,84 +241,13 @@ export const ShopPage: React.FC = () => {
         items: filteredProducts.slice(0, 20).map((p, i) => ({
           item_id: p.id,
           item_name: p.name,
-          item_category: p.category || p.category_name || '',
+          item_category: p.category || '',
           price: Number(p.price) || 0,
           index: i,
         })),
       },
     });
   }, [filteredProducts, pageTitle]);
-
-  /* ── Shared filter panel ── */
-  const FilterPanel = () => (
-    <div className="space-y-7">
-
-      {/* Availability */}
-      <div>
-        <h3 className="text-sm font-semibold text-charcoal mb-3 uppercase tracking-wider">
-          Availability
-        </h3>
-        <div className="flex flex-col gap-2">
-          {(['all', 'in_stock', 'out_of_stock'] as const).map(opt => (
-            <label key={opt} className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="radio"
-                name="availability-shop"
-                checked={availability === opt}
-                onChange={() => setAvailability(opt)}
-                className="accent-rose-gold w-4 h-4"
-              />
-              <span className="text-sm text-[#6B5B55]">
-                {opt === 'all' ? 'All' : opt === 'in_stock' ? 'In Stock' : 'Out of Stock'}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* Size */}
-      <div>
-        <h3 className="text-sm font-semibold text-charcoal mb-3 uppercase tracking-wider">
-          Size
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {SIZE_OPTIONS.map(size => (
-            <button
-              key={size}
-              type="button"
-              onClick={() => toggleSize(size)}
-              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${selectedSizes.includes(size)
-                ? 'bg-rose-gold text-white border-rose-gold font-medium'
-                : 'border-blush/40 text-[#6B5B55] hover:border-rose-gold'
-                }`}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Price Range */}
-      <div>
-        <h3 className="text-sm font-semibold text-charcoal mb-3 uppercase tracking-wider">
-          Price Range
-        </h3>
-        <input
-          type="range"
-          min={0}
-          max={maxPrice}
-          step={50}
-          value={priceRange[1]}
-          onChange={e => setPriceRange([0, parseInt(e.target.value)])}
-          className="w-full accent-rose-gold"
-        />
-        <div className="flex justify-between text-sm text-[#6B5B55] mt-1.5">
-          <span>{SITE.currency.symbol}0</span>
-          <span>{priceRange[1] >= maxPrice ? 'No limit' : `${SITE.currency.symbol}${priceRange[1].toLocaleString()}`}</span>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <>
@@ -275,13 +285,13 @@ export const ShopPage: React.FC = () => {
                 <SlidersHorizontal size={16} />
                 Filters
                 {activeFilterCount > 0 && (
-                  <span className="w-5 h-5 bg-rose-gold text-white text-xs rounded-full flex items-center justify-center">
+                  <span className="w-5 h-5 bg-rose-gold text-white text-xs rounded-full flex items-center justify-center font-medium">
                     {activeFilterCount}
                   </span>
                 )}
               </Button>
               {activeFilterCount > 0 && (
-                <button onClick={clearFilters} className="text-xs text-rose-gold hover:underline">
+                <button onClick={clearFilters} className="text-xs text-rose-gold hover:underline font-medium">
                   Clear all
                 </button>
               )}
@@ -304,12 +314,14 @@ export const ShopPage: React.FC = () => {
                 <button
                   onClick={() => setGridCols(3)}
                   className={`p-2 rounded-lg ${gridCols === 3 ? 'bg-blush-light' : 'hover:bg-blush-light/50'} transition-colors`}
+                  aria-label="3 columns grid"
                 >
                   <Grid2X2 size={16} />
                 </button>
                 <button
                   onClick={() => setGridCols(4)}
                   className={`p-2 rounded-lg ${gridCols === 4 ? 'bg-blush-light' : 'hover:bg-blush-light/50'} transition-colors`}
+                  aria-label="4 columns grid"
                 >
                   <Grid3X3 size={16} />
                 </button>
@@ -323,21 +335,32 @@ export const ShopPage: React.FC = () => {
               <>
                 <motion.div
                   key="mobile-filter-backdrop"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   className="fixed inset-0 bg-black/40 z-40 md:hidden"
                   onClick={() => setShowFilters(false)}
                 />
                 <motion.div
                   key="mobile-filter-sheet"
-                  initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
                   transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-                  className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white rounded-t-3xl shadow-2xl max-h-[82vh] overflow-y-auto"
+                  className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto"
                 >
                   <div className="flex justify-center pt-3 pb-1">
                     <div className="w-10 h-1 rounded-full bg-gray-300" />
                   </div>
                   <div className="flex items-center justify-between px-5 py-3 border-b border-blush/30">
-                    <span className="text-base font-semibold text-charcoal">Filters</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-bold text-charcoal">Filters</span>
+                      {activeFilterCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-rose-gold text-white text-xs font-semibold">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setShowFilters(false)}
@@ -348,8 +371,24 @@ export const ShopPage: React.FC = () => {
                     </button>
                   </div>
                   <div className="px-5 py-5">
-                    <FilterPanel />
-                    <div className="flex gap-3 pt-6 pb-safe">
+                    <ProductFilterPanel
+                      products={products}
+                      selectedCategories={selectedCategories}
+                      onToggleCategory={toggleCategory}
+                      selectedSizes={selectedSizes}
+                      onToggleSize={toggleSize}
+                      selectedColors={selectedColors}
+                      onToggleColor={toggleColor}
+                      selectedStyles={selectedStyles}
+                      onToggleStyle={toggleStyle}
+                      priceRange={priceRange}
+                      onPriceChange={setPriceRange}
+                      sort={sortFilter}
+                      onSortChange={updateSort}
+                      onClearAll={clearFilters}
+                      activeFilterCount={activeFilterCount}
+                    />
+                    <div className="flex gap-3 pt-6 pb-safe border-t border-blush/30 mt-6">
                       <button
                         type="button"
                         onClick={clearFilters}
@@ -360,7 +399,7 @@ export const ShopPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setShowFilters(false)}
-                        className="flex-1 py-3 rounded-xl bg-rose-gold text-white text-sm font-semibold hover:bg-deep-rose transition-colors"
+                        className="flex-1 py-3 rounded-xl bg-rose-gold text-white text-sm font-semibold hover:bg-deep-rose shadow-md shadow-rose-gold/20 transition-colors"
                       >
                         Show {filteredProducts.length} Results
                       </button>
@@ -371,38 +410,55 @@ export const ShopPage: React.FC = () => {
             )}
           </AnimatePresence>
 
-          <div className="flex gap-8">
+          <div className="flex gap-8 items-start">
 
             {/* ── Desktop Sidebar Filter ── */}
             <AnimatePresence>
               {showFilters && (
                 <motion.aside
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 256, opacity: 1 }}
+                  animate={{ width: 280, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="hidden md:block flex-shrink-0 overflow-hidden"
+                  className="hidden md:block flex-shrink-0 overflow-hidden sticky top-28 bg-[#FFF8F6]/60 p-5 rounded-2xl border border-blush/40"
                 >
-                  <div className="w-64">
-                    <FilterPanel />
+                  <div className="w-[240px]">
+                    <ProductFilterPanel
+                      products={products}
+                      selectedCategories={selectedCategories}
+                      onToggleCategory={toggleCategory}
+                      selectedSizes={selectedSizes}
+                      onToggleSize={toggleSize}
+                      selectedColors={selectedColors}
+                      onToggleColor={toggleColor}
+                      selectedStyles={selectedStyles}
+                      onToggleStyle={toggleStyle}
+                      priceRange={priceRange}
+                      onPriceChange={setPriceRange}
+                      sort={sortFilter}
+                      onSortChange={updateSort}
+                      onClearAll={clearFilters}
+                      activeFilterCount={activeFilterCount}
+                    />
                   </div>
                 </motion.aside>
               )}
             </AnimatePresence>
 
             {/* ── Products Grid ── */}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               {loading ? (
                 <div className="text-center py-20">
-                  <p className="text-[#6B5B55]">Loading products...</p>
+                  <div className="inline-block animate-spin w-8 h-8 border-3 border-rose-gold border-t-transparent rounded-full mb-3" />
+                  <p className="text-[#6B5B55]">Loading collection...</p>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <div className="text-center py-20">
+                <div className="text-center py-20 bg-[#FFF8F6]/40 rounded-3xl border border-blush/30 px-4">
                   <h3 className="heading-serif text-2xl font-semibold text-charcoal mb-2">
                     No products found
                   </h3>
-                  <p className="text-[#6B5B55] mb-6">
-                    Try adjusting your filters or search terms
+                  <p className="text-[#6B5B55] mb-6 max-w-sm mx-auto">
+                    Try adjusting your filters or search terms to see available pieces
                   </p>
                   <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
                 </div>
