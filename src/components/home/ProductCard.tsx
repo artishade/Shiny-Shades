@@ -5,6 +5,7 @@ import { ShoppingBag, Star } from 'lucide-react';
 import { PriceDisplay, Badge, StarRating } from '@/components/ui';
 import { getOptimizedImageUrl, getResponsiveSrcSet } from '@/lib/cloudinary';
 import type { Product } from '@/types';
+import { resolveColorHex } from '@/lib/colorUtils';
 
 interface ProductCardProps {
     product: Product;
@@ -14,20 +15,6 @@ interface ProductCardProps {
      */
     priority?: boolean;
 }
-
-// Colour name → hex lookup
-const COLOR_MAP: Record<string, string> = {
-    red: '#E53E3E', magenta: '#FF00FF', black: '#1A1A1A',
-    hotpink: '#FF69B4', white: '#FFFFFF', skin: '#F5CBA7',
-    beige: '#F5F0E8', pink: '#FFB6C1', navy: '#1A237E',
-    blue: '#3182CE', green: '#38A169', yellow: '#ECC94B',
-    orange: '#ED8936', purple: '#805AD5', grey: '#A0AEC0',
-    gray: '#A0AEC0', brown: '#8B4513', maroon: '#800000',
-    cream: '#FFFDD0', gold: '#FFD700', silver: '#C0C0C0',
-    coral: '#FF6B6B', peach: '#FFCBA4', rose: '#FF007F',
-    lavender: '#E6E6FA', teal: '#008080', mint: '#98FF98',
-    nude: '#E8C9A0', wine: '#722F37', burgundy: '#800020',
-};
 
 const CARD_SRCSET_WIDTHS = [240, 360, 480, 640];
 const CARD_SIZES = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw';
@@ -188,14 +175,11 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                             {product.colors.slice(0, 6).map((color: any, index: number) => {
                                 const colorName =
                                     typeof color === 'string' ? color : color.name || color.label || '';
-                                const rawHex =
+                                const rawValue =
                                     typeof color === 'string'
                                         ? color
-                                        : color.hex || color.value || color.color || '';
-                                const hex =
-                                    rawHex.startsWith('#') || rawHex.startsWith('linear-gradient')
-                                        ? rawHex
-                                        : COLOR_MAP[colorName.toLowerCase()] || '#cccccc';
+                                        : color.hex || color.value || color.color || color.code || color.name || color.label || '';
+                                const hex = resolveColorHex(rawValue || colorName);
 
                                 return (
                                     <span
@@ -204,7 +188,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                                         aria-label={colorName}
                                         className="w-3.5 h-3.5 rounded-full border border-charcoal/10 flex-shrink-0"
                                         style={
-                                            hex.startsWith('linear-gradient')
+                                            hex.startsWith('linear-gradient') || hex.startsWith('radial-gradient')
                                                 ? { background: hex }
                                                 : { backgroundColor: hex }
                                         }

@@ -38,7 +38,7 @@ export const NewArrivalsHero: React.FC<{
       initial={{ opacity: 0, y: -16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className="relative mb-10 rounded-3xl overflow-hidden min-h-[200px] md:min-h-[240px]"
+      className="relative mb-6 rounded-3xl overflow-hidden min-h-[180px] md:min-h-[220px]"
       style={
         mediaType !== 'image' && mediaType !== 'video'
           ? { background: banner?.gradient || 'linear-gradient(135deg, #F5E6DC 0%, #EDD5C5 40%, #E8C9B8 100%)' }
@@ -291,20 +291,13 @@ export const NewArrivalsPage: React.FC = () => {
         <meta name="description" content="Shop the latest arrivals at Shiny Shades. Fresh styles in lingerie, dresses, and women's fashion — new drops every week." />
         <link rel="canonical" href="https://shinyshades.vercel.app/new-arrivals" />
       </Helmet>
-      <div className="min-h-screen pt-24 pb-16">
+      <div className="min-h-screen pt-20 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Hero Banner */}
           {content.newArrivalBanners?.[0]?.active !== false && (
             <NewArrivalsHero banner={content.newArrivalBanners?.[0]} />
           )}
-
-          {/* Piece count */}
-          <FadeIn>
-            <p className="text-[#6B5B55] text-sm mb-6 -mt-4">
-              {filteredProducts.length}{' '}{filteredProducts.length === 1 ? 'piece' : 'pieces'} found
-            </p>
-          </FadeIn>
 
           {/* ── Toolbar ── */}
           <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">

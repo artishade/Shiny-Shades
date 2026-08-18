@@ -241,14 +241,22 @@ const resolveColor = (input: string): string => {
   if (COLOR_NAME_TO_HEX[lower]) return COLOR_NAME_TO_HEX[lower];
 
   // Try CSS color names via browser
-  const s = new Option().style;
-  s.color = trimmed;
-  if (s.color !== '') return trimmed;
+  try {
+    const s = new Option().style;
+    s.color = trimmed;
+    if (s.color !== '') return trimmed;
+  } catch {}
 
-  // Last resort — use nearest simple color hex
+  // Nearest simple color hex
   try {
     const result = getNearestSimpleColor(trimmed);
     if (result?.value) return result.value;
+  } catch { }
+
+  // Nearest full color name
+  try {
+    const matched = getNearestColorName(trimmed);
+    if (matched?.value) return matched.value;
   } catch { }
 
   return '#cccccc';

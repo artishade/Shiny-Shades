@@ -256,19 +256,16 @@ export const ShopPage: React.FC = () => {
         <meta name="description" content="Browse Shiny Shades's full collection of premium women's fashion including lingerie, dresses, and more. Free delivery across Bangladesh." />
         <link rel="canonical" href="https://shinyshades.vercel.app/shop" />
       </Helmet>
-      <div className="min-h-screen pt-24 pb-16">
+      <div className="min-h-screen pt-20 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* ── Page Header ── */}
           <FadeIn>
-            <div className="mb-8">
+            <div className="mb-5">
               <h1 className="heading-serif text-3xl md:text-4xl lg:text-5xl font-bold text-charcoal mb-2">
                 {pageTitle}
               </h1>
-              <p className="text-[#6B5B55]">
-                {filteredProducts.length}{' '}{filteredProducts.length === 1 ? 'piece' : 'pieces'} found
-              </p>
-              <div className="luxury-line mt-4 w-16" />
+              <div className="luxury-line mt-3 w-16" />
             </div>
           </FadeIn>
 

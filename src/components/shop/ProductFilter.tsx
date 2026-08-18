@@ -8,61 +8,7 @@ import React, { useMemo } from 'react';
 import { Check, RotateCcw, ArrowUpDown } from 'lucide-react';
 import { SITE } from '@/config/siteConfig';
 import type { Product } from '@/types';
-
-// Color name to Hex fallback map
-const COLOR_MAP: Record<string, string> = {
-  white: '#FFFFFF',
-  'off white': '#FAF9F6',
-  cream: '#FFFDD0',
-  ivory: '#FFFFF0',
-  black: '#1A1A1A',
-  charcoal: '#36454F',
-  grey: '#808080',
-  gray: '#808080',
-  'dark grey': '#4A4A4A',
-  'light grey': '#D3D3D3',
-  red: '#E53E3E',
-  'dark red': '#8B0000',
-  maroon: '#800000',
-  crimson: '#DC143C',
-  pink: '#FFB6C1',
-  'hot pink': '#FF69B4',
-  'baby pink': '#F4C2C2',
-  rose: '#FF007F',
-  'rose gold': '#B76E79',
-  blush: '#E8C9B8',
-  magenta: '#FF00FF',
-  purple: '#805AD5',
-  violet: '#EE82EE',
-  lavender: '#E6E6FA',
-  navy: '#1A237E',
-  blue: '#3182CE',
-  'sky blue': '#87CEEB',
-  'baby blue': '#89CFF0',
-  'royal blue': '#4169E1',
-  teal: '#008080',
-  green: '#38A169',
-  'dark green': '#006400',
-  'light green': '#90EE90',
-  mint: '#98FF98',
-  olive: '#808000',
-  yellow: '#ECC94B',
-  gold: '#FFD700',
-  orange: '#ED8936',
-  peach: '#FFCBA4',
-  coral: '#FF6B6B',
-  salmon: '#FA8072',
-  brown: '#8B4513',
-  beige: '#F5F0E8',
-  skin: '#FED9B0',
-  nude: '#E8C9A0',
-  silver: '#C0C0C0',
-  wine: '#722F37',
-  burgundy: '#800020',
-  mustard: '#FFDB58',
-  khaki: '#F0E68C',
-  mauve: '#E0B0FF',
-};
+import { resolveColorHex } from '@/lib/colorUtils';
 
 export interface ExtractedFilterOptions {
   categories: { name: string; count: number }[];
@@ -132,17 +78,18 @@ export function extractAvailableFilters(products: any[]): ExtractedFilterOptions
     if (Array.isArray(p.colors)) {
       p.colors.forEach((c: any) => {
         let name = '';
-        let hex = '';
+        let rawColor = '';
 
         if (typeof c === 'string' && c.trim()) {
           name = c.trim();
-          hex = COLOR_MAP[name.toLowerCase()] || '#C4956A';
+          rawColor = c.trim();
         } else if (c && typeof c === 'object') {
           name = (c.name || c.label || c.color || '').trim();
-          hex = c.hex || COLOR_MAP[name.toLowerCase()] || '#C4956A';
+          rawColor = c.hex || c.value || c.color || c.name || c.label || '';
         }
 
         if (name) {
+          const hex = resolveColorHex(rawColor || name);
           const existing = colorMap.get(name);
           if (existing) {
             existing.count += 1;
@@ -359,7 +306,11 @@ export const ProductFilterPanel: React.FC<ProductFilterProps> = ({
                     className={`w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center shadow-xs ${
                       isLight ? 'border border-gray-300' : ''
                     }`}
-                    style={{ backgroundColor: hex }}
+                    style={
+                      hex.startsWith('linear-gradient') || hex.startsWith('radial-gradient')
+                        ? { background: hex }
+                        : { backgroundColor: hex }
+                    }
                   >
                     {isSelected && (
                       <Check

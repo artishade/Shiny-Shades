@@ -59,9 +59,9 @@
   <!-- OG image now built from env vars at build time — same pattern as VITE_FB_PIXEL_ID / VITE_GTM_ID below.
        Set VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_OG_FOLDER / VITE_CLOUDINARY_OG_FILENAME in Vercel env vars. -->
   <meta property="og:image"
-    content="https://res.cloudinary.com/kroxxeb9/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/og-banner.jpg" />
+    content="https://res.cloudinary.com/%VITE_CLOUDINARY_CLOUD_NAME%/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/%VITE_CLOUDINARY_OG_FILENAME%" />
   <meta property="og:image:secure_url"
-    content="https://res.cloudinary.com/kroxxeb9/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/og-banner.jpg" />
+    content="https://res.cloudinary.com/%VITE_CLOUDINARY_CLOUD_NAME%/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/%VITE_CLOUDINARY_OG_FILENAME%" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -74,7 +74,7 @@
   <meta name="twitter:description"
     content="Shop Shiny Shades — Bangladesh's premium destination for push-up bras, maternity wear, shapewear, nightwear, and elegant western dresses. Fast delivery across Bangladesh." />
   <meta name="twitter:image"
-    content="https://res.cloudinary.com/kroxxeb9/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/og-banner.jpg" />
+    content="https://res.cloudinary.com/%VITE_CLOUDINARY_CLOUD_NAME%/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/%VITE_CLOUDINARY_OG_FILENAME%" />
   <meta name="twitter:image:alt" content="Shiny Shades — Premium Women's Fashion in Bangladesh" />
 
   <link rel="preconnect" href="https://res.cloudinary.com" crossorigin />
@@ -120,11 +120,11 @@
     "url": "https://shinyshades.vercel.app/",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://res.cloudinary.com/kroxxeb9/image/upload/%VITE_CLOUDINARY_OG_FOLDER%/logo.png",
+      "url": "https://res.cloudinary.com/%VITE_CLOUDINARY_CLOUD_NAME%/image/upload/%VITE_CLOUDINARY_OG_FOLDER%/logo.png",
       "width": 512,
       "height": 512
     },
-    "image": "https://res.cloudinary.com/kroxxeb9/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/og-banner.jpg",
+    "image": "https://res.cloudinary.com/%VITE_CLOUDINARY_CLOUD_NAME%/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/%VITE_CLOUDINARY_OG_FOLDER%/%VITE_CLOUDINARY_OG_FILENAME%",
     "description": "Bangladesh's premium destination for women's western dresses, bras, innerwear, shapewear, nightwear, and maternity wear.",
     "foundingDate": "2023",
     "areaServed": {
@@ -185,10 +185,10 @@
       s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
     }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
     // Fallback: if VITE_FB_PIXEL_ID wasn't set at build time, Vite leaves the
-    // literal "1341948154747302" string here instead of replacing it — that
+    // literal "%VITE_FB_PIXEL_ID%" string here instead of replacing it — that
     // breaks fbq('init', ...) silently. This guard swaps in the known real ID
     // any time the placeholder wasn't substituted, so tracking never goes dark.
-    var __fbPixelId = '1341948154747302';
+    var __fbPixelId = '%VITE_FB_PIXEL_ID%';
     if (!__fbPixelId || __fbPixelId.indexOf('VITE_FB_PIXEL_ID') !== -1) {
       __fbPixelId = '1341948154747302';
     }
@@ -208,7 +208,7 @@
     })(window, document, 'script', 'dataLayer',
       (function () {
         // Same fallback guard as the Pixel ID above, for GTM's container ID.
-        var __gtmId = 'GTM-5JJ249N6';
+        var __gtmId = '%VITE_GTM_ID%';
         if (!__gtmId || __gtmId.indexOf('VITE_GTM_ID') !== -1) {
           __gtmId = 'GTM-TWN3NF5S';
         }
@@ -216,7 +216,7 @@
       })());
   </script>
 
-  <script type="module" crossorigin src="/assets/index-DjSTIo8X.js"></script>
+  <script type="module" crossorigin src="/assets/index-Dl8YEboL.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/vendor-react-DskM_QKr.js">
   <link rel="modulepreload" crossorigin href="/assets/vendor-misc-DIvaoI77.js">
   <link rel="modulepreload" crossorigin href="/assets/vendor-helmet-BoMGyCgS.js">
@@ -226,8 +226,8 @@
   <link rel="modulepreload" crossorigin href="/assets/vendor-color-B3M8g5Sl.js">
   <link rel="modulepreload" crossorigin href="/assets/vendor-zustand-CYbthY84.js">
   <link rel="modulepreload" crossorigin href="/assets/vendor-supabase-Clu9ZlKy.js">
-  <link rel="modulepreload" crossorigin href="/assets/app-admin-CjwOGnoP.js">
-  <link rel="stylesheet" crossorigin href="/assets/css/index-CIqrlVv_.css">
+  <link rel="modulepreload" crossorigin href="/assets/app-admin-BetWVi22.js">
+  <link rel="stylesheet" crossorigin href="/assets/css/index-CiKORmrw.css">
 </head>
 
 <body>
