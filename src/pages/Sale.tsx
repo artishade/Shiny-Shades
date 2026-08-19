@@ -70,11 +70,12 @@ export const SaleHero: React.FC<{
                     muted loop autoPlay playsInline
                 />
             )}
-            <div
-                className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-25"
-                style={{ background: 'radial-gradient(circle, #B07D6B 0%, transparent 65%)' }}
-            />
-            <div className="absolute inset-0 bg-black/30" />
+            {mediaType !== 'image' && mediaType !== 'video' && (
+                <div
+                    className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-25"
+                    style={{ background: 'radial-gradient(circle, #B07D6B 0%, transparent 65%)' }}
+                />
+            )}
 
             <div className="relative z-10 px-8 md:px-16 py-8 md:py-10 flex flex-col md:flex-row items-center gap-8">
                 <div className="flex-1 text-center md:text-left">

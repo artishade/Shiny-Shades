@@ -87,8 +87,6 @@ export const BannerSlider: React.FC = () => {
                                 <div className="absolute inset-0" style={{ background: banner.gradient }} />
                             )}
 
-                            {hasDarkBackdrop && <div className="absolute inset-0 bg-black/30" />}
-
                             <div className="relative px-8 md:px-16 max-w-xl">
                                 <h3
                                     className={`heading-serif text-2xl md:text-4xl lg:text-5xl font-bold mb-3 ${hasDarkBackdrop ? 'text-white drop-shadow-lg' : 'text-charcoal'

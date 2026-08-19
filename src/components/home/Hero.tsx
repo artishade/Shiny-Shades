@@ -120,8 +120,6 @@ export const Hero: React.FC = () => {
                 <div className="absolute inset-0 hero-gradient" aria-hidden="true" />
             )}
 
-            {hasImage && <div className="absolute inset-0 bg-black/20" aria-hidden="true" />}
-
             {!hasImage && (
                 <div className="absolute inset-0" aria-hidden="true">
                     <motion.div

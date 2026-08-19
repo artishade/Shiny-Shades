@@ -70,11 +70,16 @@ export const NewArrivalsHero: React.FC<{
           muted loop autoPlay playsInline
         />
       )}
-      <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full opacity-20"
-        style={{ background: 'radial-gradient(circle, #B07D6B 0%, transparent 70%)' }} />
-      <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full opacity-15"
-        style={{ background: 'radial-gradient(circle, #C4956A 0%, transparent 70%)' }} />
-      <div className="absolute top-0 left-0 right-0 h-px opacity-30" style={{ background: '#B07D6B' }} />
+      {mediaType !== 'image' && mediaType !== 'video' && (
+        <>
+          <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #B07D6B 0%, transparent 70%)' }} />
+          <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full opacity-15"
+            style={{ background: 'radial-gradient(circle, #C4956A 0%, transparent 70%)' }} />
+          <div className="absolute top-0 left-0 right-0 h-px opacity-30" style={{ background: '#B07D6B' }} />
+          <div className="absolute bottom-0 left-0 right-0 h-px opacity-30" style={{ background: '#B07D6B' }} />
+        </>
+      )}
 
       <div className="relative z-10 px-8 md:px-16 py-8 md:py-10 flex flex-col md:flex-row items-center gap-8">
         <div className="flex-1 text-center md:text-left">
@@ -86,8 +91,6 @@ export const NewArrivalsHero: React.FC<{
           </p>
         </div>
       </div>
-
-      <div className="absolute bottom-0 left-0 right-0 h-px opacity-30" style={{ background: '#B07D6B' }} />
     </motion.div>
   );
 };

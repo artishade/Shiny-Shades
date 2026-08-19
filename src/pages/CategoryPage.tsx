@@ -416,11 +416,6 @@ export const CategoryPage: React.FC = () => {
               />
             )}
 
-            {/* Dark scrim — improves H1 contrast over the image (WCAG AA) */}
-            {category.image?.startsWith('http') && (
-              <div className="absolute inset-0 bg-black/35 rounded-3xl" aria-hidden="true" />
-            )}
-
             {/* Hero text */}
             <div className="relative z-10">
               {/*
