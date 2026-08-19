@@ -1,3 +1,6 @@
 {
-    "claudeCodeChat.permissions.yoloMode": false
+    "claudeCodeChat.permissions.yoloMode": false,
+    "cursor.chatMaxWidth": 1680,
+    "files.autoSave": "afterDelay",
+    "editor.tabSize": 5
 }

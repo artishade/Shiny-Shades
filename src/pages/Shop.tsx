@@ -10,8 +10,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Grid3X3, Grid2X2, SlidersHorizontal, X } from 'lucide-react';
 
 import { ProductCard } from '@/components/home';
-import { FadeIn, Button, Select } from '@/components/ui';
+import { Button, Select } from '@/components/ui';
 import { ProductFilterPanel, extractAvailableFilters } from '@/components/shop/ProductFilter';
+import { ShopCategoryMarquee } from '@/components/shop/ShopCategoryMarquee';
 import { supabase } from '@/lib/supabase';
 import { Helmet } from 'react-helmet-async';
 
@@ -216,7 +217,7 @@ export const ShopPage: React.FC = () => {
     setPriceRange([availableFilters.minPrice, availableFilters.maxPrice]);
   };
 
-  const pageTitle = searchQuery ? `Search: "${searchQuery}"` : 'Our Collection';
+  const pageTitle = searchQuery ? `Search: "${searchQuery}"` : 'Shop';
 
   const isPriceModified =
     priceRange[0] > availableFilters.minPrice ||
@@ -256,18 +257,11 @@ export const ShopPage: React.FC = () => {
         <meta name="description" content="Browse Shiny Shades's full collection of premium women's fashion including lingerie, dresses, and more. Free delivery across Bangladesh." />
         <link rel="canonical" href="https://shinyshades.vercel.app/shop" />
       </Helmet>
-      <div className="min-h-screen pt-20 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen pb-16">
+        <h1 className="sr-only">{pageTitle}</h1>
+        <ShopCategoryMarquee />
 
-          {/* ── Page Header ── */}
-          <FadeIn>
-            <div className="mb-5">
-              <h1 className="heading-serif text-3xl md:text-4xl lg:text-5xl font-bold text-charcoal mb-2">
-                {pageTitle}
-              </h1>
-              <div className="luxury-line mt-3 w-16" />
-            </div>
-          </FadeIn>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* ── Toolbar ── */}
           <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
