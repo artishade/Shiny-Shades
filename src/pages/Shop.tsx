@@ -115,6 +115,7 @@ export const ShopPage: React.FC = () => {
 
   const sortFilter = searchParams.get('sort') || 'newest';
   const searchQuery = searchParams.get('q') || '';
+  const filterParam = searchParams.get('filter') || '';
 
   /* ── Filter state ── */
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -126,6 +127,15 @@ export const ShopPage: React.FC = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    if (filterParam === 'trending') {
+      setSelectedStyles(['Trending']);
+    }
+    if (searchParams.get('featured') === 'true') {
+      setSelectedStyles(['Featured']);
+    }
+  }, [filterParam, searchParams]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -213,7 +223,9 @@ export const ShopPage: React.FC = () => {
     /* Styles / Tags */
     if (selectedStyles.length > 0) {
       filtered = filtered.filter(p =>
-        Array.isArray(p.tags) && selectedStyles.some(t => p.tags.includes(t))
+        (Array.isArray(p.tags) && selectedStyles.some(t => p.tags.includes(t))) ||
+        (selectedStyles.includes('Trending') && p.isTrending) ||
+        (selectedStyles.includes('Featured') && p.isFeatured)
       );
     }
 

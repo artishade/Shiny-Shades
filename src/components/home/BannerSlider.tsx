@@ -35,7 +35,7 @@ export const BannerSlider: React.FC = () => {
 
     return (
         <section className="relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div className="relative rounded-3xl overflow-hidden h-64 md:h-80 lg:h-96">
                     <AnimatePresence mode="wait">
                         <motion.div

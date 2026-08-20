@@ -17,7 +17,7 @@ export const FeaturedCollection: React.FC = () => {
     const featured = products.filter((p) => p.isFeatured);
 
     return (
-        <section className="py-12 md:py-16" style={{ backgroundColor: BRAND.colors.softBg }}>
+        <section className="py-6 md:py-8" style={{ backgroundColor: BRAND.colors.softBg }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <FadeIn>
                     <SectionHeader
@@ -27,13 +27,13 @@ export const FeaturedCollection: React.FC = () => {
                 </FadeIn>
 
                 {featured.length === 0 ? (
-                    <div className="text-center py-16 text-warm-gray">
+                    <div className="text-center py-8 text-warm-gray">
                         <p>No featured products yet. Mark products as "Featured" in the admin panel.</p>
                     </div>
                 ) : (
                     <FadeIn delay={0.15}>
                         <div
-                            className="mt-10"
+                            className="mt-6"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',

@@ -342,7 +342,7 @@ export const CategoryPage: React.FC = () => {
       )}
 
       {/* ── PAGE CONTENT ──────────────────────────────────────────────────── */}
-      <div className="min-h-screen pt-24 pb-16">
+      <div className="min-h-screen pt-8 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Breadcrumb — semantic nav landmark */}
@@ -380,87 +380,21 @@ export const CategoryPage: React.FC = () => {
             </span>
           </nav>
 
-          {/* ── Hero Banner ──────────────────────────────────────────────── */}
-          {/*
-            NOT wrapped in <FadeIn> — the hero is above-the-fold, LCP content.
-            Wrapping in FadeIn sets initial opacity:0 which delays the browser
-            from painting it, hurting LCP directly. Static render is correct here.
-          */}
-          <div
-            className="rounded-3xl p-8 md:p-12 mb-10 min-h-[220px] flex items-center relative overflow-hidden"
-            style={{ background: category.gradient || '#F5E6DC' }}
-          >
-            {/*
-              Category hero image — LCP candidate.
-              - loading="eager" + fetchPriority="high" + decoding="sync":
-                tells the browser to prioritise this above all other images.
-              - Real <img> (not CSS background-image) so the preload scanner
-                can discover it on the first HTML parse, before CSS runs.
-              - Explicit width/height (intrinsic dimensions) prevent CLS.
-                The container reserves min-h-[220px] but the img fills it
-                via object-cover, so 1200×800 is a safe 3:2 aspect ratio.
-              - aria-hidden + empty alt: purely decorative — the h1 text
-                communicates the category. Screen readers skip decoration.
-            */}
-            {category.image?.startsWith('http') && (
-              <img
-                src={category.image}
-                alt=""
-                aria-hidden="true"
-                loading="eager"
-                decoding="sync"
-                fetchPriority="high"
-                width={1200}
-                height={800}
-                className="absolute inset-0 w-full h-full object-cover rounded-3xl"
-              />
-            )}
-
-            {/* Hero text */}
-            <div className="relative z-10">
-              {/*
-                H1 — the category name is the sole top-level heading on this page.
-                Colour adapts: white over images (drop-shadow ensures 4.5:1 contrast
-                even on light photos), charcoal on gradient backgrounds.
-              */}
-              <h1
-                className={`heading-serif text-3xl md:text-5xl font-bold mb-3 ${category.image?.startsWith('http')
-                  ? 'text-white drop-shadow-lg'
-                  : 'text-charcoal'
-                  }`}
-              >
-                {category.name}
-              </h1>
-
-              {category.description && (
-                <p
-                  className={`max-w-xl leading-relaxed ${category.image?.startsWith('http')
-                    ? 'text-white/90 drop-shadow'
-                    : 'text-[#6B5B55]'
-                    }`}
-                >
-                  {category.description}
-                </p>
-              )}
-
-              {/*
-                Product count — aria-live="polite" + aria-atomic="true" so
-                screen readers announce the count once it changes from
-                "Loading…" to the real number, without interrupting ongoing speech.
-              */}
-              <p
-                className={`text-sm mt-4 ${category.image?.startsWith('http')
-                  ? 'text-white/80'
-                  : 'text-[#6B5B55]'
-                  }`}
-                aria-live="polite"
-                aria-atomic="true"
-              >
-                {loading
-                  ? 'Loading…'
-                  : `${products.length} ${products.length === 1 ? 'product' : 'products'}`}
+          {/* ── Category title (banner removed — plain heading instead) ──── */}
+          <div className="mb-8">
+            <h1 className="heading-serif text-3xl md:text-4xl font-bold text-charcoal mb-2">
+              {category.name}
+            </h1>
+            {category.description && (
+              <p className="text-[#6B5B55] max-w-xl leading-relaxed">
+                {category.description}
               </p>
-            </div>
+            )}
+            <p className="text-sm text-[#6B5B55] mt-2" aria-live="polite" aria-atomic="true">
+              {loading
+                ? 'Loading…'
+                : `${products.length} ${products.length === 1 ? 'product' : 'products'}`}
+            </p>
           </div>
 
           {/* ── Subcategory chips — only shown when this category has children ── */}
@@ -498,7 +432,7 @@ export const CategoryPage: React.FC = () => {
           ) : products.length === 0 ? (
             <div className="text-center py-16">
               {/*
-                H2 — correct hierarchy: H1 is the category name in the hero above.
+                H2 — correct hierarchy: H1 is the category name above.
               */}
               <h2 className="heading-serif text-2xl font-semibold text-charcoal mb-3">
                 No Products Found

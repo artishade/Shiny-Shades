@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { FadeIn, SectionHeader, PriceDisplay, Badge } from '@/components/ui';
+import { FadeIn, SectionHeader, PriceDisplay, Badge, Button } from '@/components/ui';
 import { useProductStore } from '@/store';
 import { useContentStore } from '@/store/contentStore';
 import { useAutoScroll } from './useAutoScroll';
@@ -27,19 +27,29 @@ export const TrendingProducts: React.FC = () => {
     useEffect(() => { fetchProducts(); }, []);
 
     return (
-        <section className="py-8 md:py-12 overflow-hidden" style={{ backgroundColor: BRAND.colors.blushLight }}>
+        <section className="py-4 md:py-6 overflow-hidden" style={{ backgroundColor: BRAND.colors.blushLight }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <FadeIn>
-                    <SectionHeader title={content.trendingTitle} subtitle={content.trendingSubtitle} />
+                    <div className="flex flex-col items-center">
+                        <SectionHeader title={content.trendingTitle} subtitle={content.trendingSubtitle} />
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-[-1.5rem] mb-6"
+                            onClick={() => navigate('/shop?filter=trending')}
+                        >
+                            See More
+                        </Button>
+                    </div>
                 </FadeIn>
             </div>
 
             {trending.length === 0 ? (
-                <div className="text-center py-16 text-warm-gray">
+                <div className="text-center py-8 text-warm-gray">
                     <p>No trending products yet. Mark products as "Trending" in the admin panel.</p>
                 </div>
             ) : (
-                <div className="relative mt-10">
+                <div className="relative mt-4">
                     <div
                         className="overflow-hidden"
                         onMouseEnter={() => { isPausedRef.current = true; }}

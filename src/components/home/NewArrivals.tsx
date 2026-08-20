@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import { FadeIn, SectionHeader, PriceDisplay, Badge } from '@/components/ui';
+import { FadeIn, SectionHeader, PriceDisplay, Badge, Button } from '@/components/ui';
 import { useProductStore } from '@/store';
 import { useContentStore } from '@/store/contentStore';
 import { useAutoScroll } from './useAutoScroll';
@@ -47,13 +47,13 @@ export const NewArrivals: React.FC = () => {
     };
 
     return (
-        <section className="py-8 md:py-12 overflow-hidden" style={{ backgroundColor: bgColor }}>
+        <section className="py-4 md:py-6 overflow-hidden" style={{ backgroundColor: bgColor }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <FadeIn>
                     {/* Whole header block is clickable when admin sets a URL */}
                     <div
                         onClick={handleHeaderClick}
-                        className={buttonUrl ? 'cursor-pointer' : undefined}
+                        className={buttonUrl ? 'cursor-pointer flex flex-col items-center' : 'flex flex-col items-center'}
                         role={buttonUrl ? 'link' : undefined}
                         aria-label={buttonUrl ? `${title} — view all` : undefined}
                         tabIndex={buttonUrl ? 0 : undefined}
@@ -63,18 +63,29 @@ export const NewArrivals: React.FC = () => {
                         }
                     >
                         <SectionHeader title={title} subtitle={subtitle} />
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-[-1.5rem] mb-6"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigate('/new-arrivals');
+                            }}
+                        >
+                            See More
+                        </Button>
                     </div>
                 </FadeIn>
             </div>
 
             {newItems.length === 0 ? (
                 emptyMsg ? (
-                    <div className="text-center py-16 text-warm-gray">
+                    <div className="text-center py-8 text-warm-gray">
                         <p>{emptyMsg}</p>
                     </div>
                 ) : null
             ) : (
-                <div className="relative mt-10">
+                <div className="relative mt-4">
                     <div
                         className="overflow-hidden"
                         onMouseEnter={() => { isPausedRef.current = true; }}

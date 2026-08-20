@@ -223,7 +223,7 @@ const RecentlyViewedProducts = memo(() => {
 
   return (
     <section
-      className="py-8 md:py-12 overflow-hidden"
+      className="py-6 md:py-8 overflow-hidden"
       style={{ backgroundColor: '#FAF7F3' }}
       aria-labelledby="recently-viewed-heading"
     >
