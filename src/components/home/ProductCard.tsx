@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingBag, Star } from 'lucide-react';
 import { PriceDisplay, Badge, StarRating } from '@/components/ui';
@@ -14,14 +14,22 @@ interface ProductCardProps {
      * eagerly with high fetchPriority (above-the-fold LCP candidates).
      */
     priority?: boolean;
+    /**
+     * Which image in product.images this card shows (default 0 = cover).
+     * Used when a single product is exploded into one grid card per image.
+     */
+    imageIndex?: number;
 }
 
 const CARD_SRCSET_WIDTHS = [240, 360, 480, 640];
 const CARD_SIZES = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw';
 
 export const ProductCard: React.FC<ProductCardProps> = React.memo(
-    ({ product, priority = false }) => {
-        const rawSrc = product.images?.[0]?.startsWith('http') ? product.images[0] : null;
+    ({ product, priority = false, imageIndex = 0 }) => {
+        const imgAt = product.images?.[imageIndex]?.startsWith('http')
+            ? product.images[imageIndex]
+            : product.images?.[0]?.startsWith('http') ? product.images[0] : null;
+        const rawSrc = imgAt;
 
         const optimisedSrc = rawSrc
             ? getOptimizedImageUrl(rawSrc, { width: 480, crop: 'fill' })
@@ -38,7 +46,12 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                 ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
                 : 0;
 
-        const productUrl = `/product/${product.slug}`;
+        // Non-cover cards deep-link to the same product, opened on that image
+        const productUrl = imageIndex > 0
+            ? `/product/${product.slug}?img=${imageIndex}`
+            : `/product/${product.slug}`;
+
+        const navigate = useNavigate();
 
         return (
             <Link
@@ -127,15 +140,14 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(
                     {/* Text info */}
                     <div>
                         {product.categorySlug ? (
-                            <Link
-                                to={`/category/${product.categorySlug}`}
-                                onClick={(e) => e.stopPropagation()}
+                            <span
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); navigate(`/category/${product.categorySlug}`); }}
                                 tabIndex={-1}
                                 aria-hidden="true"
-                                className="text-xs text-[#6B5B55] hover:text-rose-gold transition-colors mb-0.5 block"
+                                className="text-xs text-[#6B5B55] hover:text-rose-gold transition-colors mb-0.5 block cursor-pointer"
                             >
                                 {product.category}
-                            </Link>
+                            </span>
                         ) : (
                             <p className="text-xs text-[#6B5B55] mb-0.5">{product.category}</p>
                         )}

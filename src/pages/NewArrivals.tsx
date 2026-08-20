@@ -1,21 +1,74 @@
 /* ===================================================
-               New Arrivals Page
+               New Arrivals Page (Scattered Multi-Image + Infinite Scroll)
    Dedicated page for the newest collection additions
-   with dynamic auto-detected filters
+   with dynamic auto-detected filters & infinite scrolling
    =================================================== */
 
 declare global { interface Window { dataLayer: any[]; } }
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Grid3X3, Grid2X2, SlidersHorizontal, X } from 'lucide-react';
 
 import { ProductCard } from '@/components/home';
-import { FadeIn, Button, Select } from '@/components/ui';
+import { Button, Select } from '@/components/ui';
 import { ProductFilterPanel, extractAvailableFilters } from '@/components/shop/ProductFilter';
 import { useProductStore } from '@/store';
 import { useContentStore } from '@/store/contentStore';
 import { Helmet } from 'react-helmet-async';
+
+// 24 is ideal for 2, 3, or 4 columns grid
+const BATCH_SIZE = 24;
+
+type ShopCard = { product: any; imageIndex: number; score?: number };
+
+/* ─── Deterministic Scattered Cards Builder ───
+   Explodes each product into individual image cards and spaces out 
+   the same product's images so they never appear side-by-side. */
+const buildScatteredCards = (products: any[]): ShopCard[] => {
+  if (!products || products.length === 0) return [];
+
+  // Optimal spacing offset: at least 7 items between images of the same product
+  const offset = Math.max(7, Math.floor(products.length / 2));
+
+  const allCards: (ShopCard & { pId: string; score: number })[] = [];
+
+  products.forEach((product, pIdx) => {
+    const images = Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : [''];
+
+    images.forEach((_: string, imgIdx: number) => {
+      // Deterministic priority score: spaces out each image index predictably
+      const score = pIdx + (imgIdx * offset) + (imgIdx * 0.01);
+      allCards.push({
+        product,
+        imageIndex: imgIdx,
+        pId: String(product.id),
+        score,
+      });
+    });
+  });
+
+  // Sort deterministically by score, then product id, then image index
+  allCards.sort((a, b) => a.score - b.score || a.pId.localeCompare(b.pId) || a.imageIndex - b.imageIndex);
+
+  // Safety pass: if any adjacent cards ever share the exact same product ID, push it forward
+  for (let i = 1; i < allCards.length; i++) {
+    if (allCards[i].pId === allCards[i - 1].pId) {
+      for (let j = i + 1; j < allCards.length; j++) {
+        if (allCards[j].pId !== allCards[i - 1].pId) {
+          const temp = allCards[i];
+          allCards[i] = allCards[j];
+          allCards[j] = temp;
+          break;
+        }
+      }
+    }
+  }
+
+  return allCards.map(({ product, imageIndex }) => ({ product, imageIndex }));
+};
 
 /* ─────────────────────────────────────────────
    NEW ARRIVALS HERO BANNER
@@ -113,6 +166,10 @@ export const NewArrivalsPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [gridCols, setGridCols] = useState<3 | 4>(4);
 
+  // How many cards currently rendered
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
+  const observerTarget = useRef<HTMLDivElement | null>(null);
+
   const sortFilter = searchParams.get('sort') || 'newest';
   const searchQuery = searchParams.get('q') || '';
 
@@ -131,7 +188,7 @@ export const NewArrivalsPage: React.FC = () => {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
 
   // Sync initial price range once products load
   useEffect(() => {
@@ -139,6 +196,11 @@ export const NewArrivalsPage: React.FC = () => {
       setPriceRange([availableFilters.minPrice, availableFilters.maxPrice]);
     }
   }, [availableFilters.minPrice, availableFilters.maxPrice]);
+
+  // Reset infinite scroll count whenever filters, query or sorting changes
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+  }, [searchQuery, selectedCategories, selectedSizes, selectedColors, selectedStyles, priceRange, sortFilter]);
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories(prev =>
@@ -200,7 +262,7 @@ export const NewArrivalsPage: React.FC = () => {
     /* Styles / Tags */
     if (selectedStyles.length > 0) {
       filtered = filtered.filter(p =>
-        Array.isArray(p.tags) && selectedStyles.some(t => selectedStyles.includes(t))
+        Array.isArray(p.tags) && selectedStyles.some(t => p.tags?.includes(t))
       );
     }
 
@@ -210,20 +272,20 @@ export const NewArrivalsPage: React.FC = () => {
       return price >= priceRange[0] && price <= priceRange[1];
     });
 
-    /* Sort */
+    /* Deterministic Sort */
     switch (sortFilter) {
       case 'price_asc':
-        filtered.sort((a, b) => Number(a.price) - Number(b.price));
+        filtered.sort((a, b) => Number(a.price) - Number(b.price) || String(a.id).localeCompare(String(b.id)));
         break;
       case 'price_desc':
-        filtered.sort((a, b) => Number(b.price) - Number(a.price));
+        filtered.sort((a, b) => Number(b.price) - Number(a.price) || String(a.id).localeCompare(String(b.id)));
         break;
       case 'featured':
-        filtered.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
+        filtered.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0) || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         break;
       case 'newest':
       default:
-        filtered.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime() || String(a.id).localeCompare(String(b.id)));
         break;
     }
 
@@ -238,6 +300,38 @@ export const NewArrivalsPage: React.FC = () => {
     priceRange,
     sortFilter,
   ]);
+
+  // Explode products into multiple spaced image cards deterministically
+  const scatteredCards = useMemo(() => buildScatteredCards(filteredProducts), [filteredProducts]);
+
+  // Current batch of scattered cards to display
+  const visibleCards = useMemo(
+    () => scatteredCards.slice(0, visibleCount),
+    [scatteredCards, visibleCount]
+  );
+
+  // Intersection Observer for Infinite Scrolling
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < scatteredCards.length) {
+          setVisibleCount(prev => Math.min(prev + BATCH_SIZE, scatteredCards.length));
+        }
+      },
+      { threshold: 0.1, rootMargin: '250px' } // Preload 250px before bottom
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [visibleCount, scatteredCards.length]);
 
   const updateSort = (sort: string) => {
     const params = new URLSearchParams(searchParams);
@@ -276,7 +370,7 @@ export const NewArrivalsPage: React.FC = () => {
       event: 'view_item_list',
       ecommerce: {
         item_list_name: 'New Arrivals',
-        items: filteredProducts.slice(0, 20).map((p, i) => ({
+        items: filteredProducts.slice(0, 24).map((p, i) => ({
           item_id: p.id,
           item_name: p.name,
           item_category: p.category || '',
@@ -294,7 +388,7 @@ export const NewArrivalsPage: React.FC = () => {
         <meta name="description" content="Shop the latest arrivals at Shiny Shades. Fresh styles in lingerie, dresses, and women's fashion — new drops every week." />
         <link rel="canonical" href="https://shinyshades.vercel.app/new-arrivals" />
       </Helmet>
-      <div className="min-h-screen pt-20 pb-16">
+      <div className="min-h-screen pt-4 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Hero Banner */}
@@ -309,6 +403,7 @@ export const NewArrivalsPage: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
+                type="button"
                 onClick={() => setShowFilters(!showFilters)}
                 className="gap-2"
               >
@@ -321,7 +416,11 @@ export const NewArrivalsPage: React.FC = () => {
                 )}
               </Button>
               {activeFilterCount > 0 && (
-                <button onClick={clearFilters} className="text-xs text-rose-gold hover:underline font-medium">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-xs text-rose-gold hover:underline font-medium"
+                >
                   Clear all
                 </button>
               )}
@@ -342,6 +441,7 @@ export const NewArrivalsPage: React.FC = () => {
               />
               <div className="hidden md:flex items-center gap-1">
                 <button
+                  type="button"
                   onClick={() => setGridCols(3)}
                   className={`p-2 rounded-lg ${gridCols === 3 ? 'bg-blush-light' : 'hover:bg-blush-light/50'} transition-colors`}
                   aria-label="3 columns grid"
@@ -349,6 +449,7 @@ export const NewArrivalsPage: React.FC = () => {
                   <Grid2X2 size={16} />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setGridCols(4)}
                   className={`p-2 rounded-lg ${gridCols === 4 ? 'bg-blush-light' : 'hover:bg-blush-light/50'} transition-colors`}
                   aria-label="4 columns grid"
@@ -431,7 +532,7 @@ export const NewArrivalsPage: React.FC = () => {
                         onClick={() => setShowFilters(false)}
                         className="flex-1 py-3 rounded-xl bg-rose-gold text-white text-sm font-semibold hover:bg-deep-rose shadow-md shadow-rose-gold/20 transition-colors"
                       >
-                        Show {filteredProducts.length} Results
+                        Show {scatteredCards.length} Results
                       </button>
                     </div>
                   </div>
@@ -490,28 +591,43 @@ export const NewArrivalsPage: React.FC = () => {
                   <p className="text-[#6B5B55] mb-6 max-w-sm mx-auto">
                     No new arrivals matching your filters. Check back soon!
                   </p>
-                  <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+                  <Button variant="outline" type="button" onClick={clearFilters}>Clear Filters</Button>
                 </div>
               ) : (
-                <motion.div
-                  layout
-                  className={`grid gap-4 md:gap-6 ${gridCols === 3
-                    ? 'grid-cols-2 md:grid-cols-3'
-                    : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-                    }`}
-                >
-                  {filteredProducts.map((product, index) => (
-                    <motion.div
-                      key={product.id}
-                      layout
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(index * 0.05, 0.3) }}
+                <>
+                  <motion.div
+                    layout
+                    className={`grid gap-4 md:gap-6 ${gridCols === 3
+                      ? 'grid-cols-2 md:grid-cols-3'
+                      : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+                      }`}
+                  >
+                    {visibleCards.map(({ product, imageIndex }, index) => (
+                      <motion.div
+                        key={`${product.id}-${imageIndex}`}
+                        layout
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: Math.min((index % BATCH_SIZE) * 0.03, 0.25) }}
+                      >
+                        <ProductCard product={product} priority={index < 4} imageIndex={imageIndex} />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+
+                  {/* ── Infinite Scroll Observer & Loading Indicator ── */}
+                  {visibleCount < scatteredCards.length && (
+                    <div
+                      ref={observerTarget}
+                      className="py-12 text-center flex flex-col items-center justify-center gap-2"
                     >
-                      <ProductCard product={product} priority={index < 4} />
-                    </motion.div>
-                  ))}
-                </motion.div>
+                      <div className="inline-block animate-spin w-7 h-7 border-2 border-rose-gold border-t-transparent rounded-full" />
+                      <p className="text-xs text-[#6B5B55] font-medium tracking-wide">
+                        Loading more pieces ({visibleCount} of {scatteredCards.length})...
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

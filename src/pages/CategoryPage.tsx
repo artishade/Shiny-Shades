@@ -528,23 +528,25 @@ export const CategoryPage: React.FC = () => {
               className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 list-none p-0 m-0"
               aria-label={`${category.name} products, ${products.length} items`}
             >
-              {products.map((product, index) => (
-                <li key={product.id}>
-                  {/*
-                    Stagger only the first 8 cards — beyond that the cumulative
-                    delay exceeds 480 ms which hurts perceived performance on
-                    long product lists.
+              {products.flatMap((product, index) =>
+                (product.images?.length ? product.images : ['']).map((_, imgIdx) => (
+                  <li key={`${product.id}-${imgIdx}`}>
+                    {/*
+                      Stagger only the first 8 cards — beyond that the cumulative
+                      delay exceeds 480 ms which hurts perceived performance on
+                      long product lists.
 
-                    First 4 cards: above-the-fold on most viewports.
-                    priority=true → ProductCard sets loading="eager" +
-                    fetchPriority="high" on the product image, making it
-                    eligible as the LCP element.
-                  */}
-                  <FadeIn delay={index < 8 ? index * 0.06 : 0}>
-                    <ProductCard product={product} priority={index < 4} />
-                  </FadeIn>
-                </li>
-              ))}
+                      First 4 cards: above-the-fold on most viewports.
+                      priority=true → ProductCard sets loading="eager" +
+                      fetchPriority="high" on the product image, making it
+                      eligible as the LCP element.
+                    */}
+                    <FadeIn delay={index < 8 ? index * 0.06 : 0}>
+                      <ProductCard product={product} priority={index < 4} imageIndex={imgIdx} />
+                    </FadeIn>
+                  </li>
+                ))
+              )}
             </ul>
           )}
 

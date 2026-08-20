@@ -165,9 +165,9 @@ const CheckoutForm: React.FC = () => {
   const { placeOrder } = useOrderStore();
 
   React.useEffect(() => {
-  trackPageView();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+    trackPageView();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const buyNow = location.state as BuyNowState | null;
 
@@ -381,10 +381,10 @@ const CheckoutForm: React.FC = () => {
 
 
   // Place order //
-const handlePlaceOrder = async () => {
-  console.log('[checkout] handlePlaceOrder fired', { placing, deliveryZone, paymentMethod });
-  if (placing) return; // guard against double-fire on mobile
-  setPlacing(true);
+  const handlePlaceOrder = async () => {
+    console.log('[checkout] handlePlaceOrder fired', { placing, deliveryZone, paymentMethod });
+    if (placing) return; // guard against double-fire on mobile
+    setPlacing(true);
     const num = `${BRAND.orderPrefix}-${Date.now().toString().slice(-6)}`;
     const [firstName, ...rest] = form.fullName.trim().split(' ');
     const lastName = rest.join(' ');
@@ -899,20 +899,20 @@ const handlePlaceOrder = async () => {
           </div>
 
           {/* ── Review Order Button ── */}
-<motion.button
-  type="button"
-  onClick={handleReviewOrder}
-  whileTap={{ scale: 0.97 }}
-  className="w-full py-4 rounded-2xl font-bold text-sm tracking-wider uppercase text-white"
-  style={{
-    background: 'linear-gradient(135deg, #B07D6B 0%, #C4956A 50%, #B07D6B 100%)',
-    border: 'none',
-    cursor: 'pointer',
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'transparent',
-  }}>
-  Review Order →
-</motion.button>
+          <motion.button
+            type="button"
+            onClick={handleReviewOrder}
+            whileTap={{ scale: 0.97 }}
+            className="w-full py-4 rounded-2xl font-bold text-sm tracking-wider uppercase text-white"
+            style={{
+              background: 'linear-gradient(135deg, #B07D6B 0%, #C4956A 50%, #B07D6B 100%)',
+              border: 'none',
+              cursor: 'pointer',
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            Review Order →
+          </motion.button>
 
           {/* Gateway error popup */}
           <AnimatePresence>
@@ -947,20 +947,20 @@ const handlePlaceOrder = async () => {
         {showReview && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-className="fixed inset-0 z-50 flex items-center justify-center p-4"
-style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', touchAction: 'manipulation' }}
-onPointerUp={e => { if (e.target === e.currentTarget) setShowReview(false); }}>
-  <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', touchAction: 'manipulation' }}
+            onPointerUp={e => { if (e.target === e.currentTarget) setShowReview(false); }}>
+            <motion.div
               initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 60 }}
-             className="w-full max-w-md rounded-3xl overflow-hidden"
-style={{
-  background: '#FDF8F5',
-  maxHeight: '90vh',
-  overflowY: 'auto',
-  WebkitOverflowScrolling: 'touch',
-  touchAction: 'pan-y',
-}}>
+              className="w-full max-w-md rounded-3xl overflow-hidden"
+              style={{
+                background: '#FDF8F5',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
+              }}>
               {/* Modal Header */}
               <div className="flex items-center justify-between p-5 sticky top-0"
                 style={{ background: '#FDF8F5', borderBottom: '1px solid rgba(176,125,107,0.15)' }}>
@@ -1035,24 +1035,24 @@ style={{
                     style={{ background: 'rgba(176,125,107,0.1)', color: '#B07D6B', border: 'none', cursor: 'pointer' }}>
                     ← Back
                   </button>
-<motion.button
-  type="button"
-  onPointerUp={(e) => {
-    e.stopPropagation();
-    handlePlaceOrder();
-  }}
-  disabled={placing}
-  whileTap={{ scale: 0.97 }}
-  className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white"
-  style={{
-    background: placing ? 'rgba(176,125,107,0.5)' : 'linear-gradient(135deg, #B07D6B, #C4956A)',
-    border: 'none',
-    cursor: placing ? 'not-allowed' : 'pointer',
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'transparent',
-  }}>
-  {placing ? 'Processing...' : `Place Order — ${SITE.currency.symbol}${total.toFixed(0)}`}
-</motion.button>
+                  <motion.button
+                    type="button"
+                    onPointerUp={(e) => {
+                      e.stopPropagation();
+                      handlePlaceOrder();
+                    }}
+                    disabled={placing}
+                    whileTap={{ scale: 0.97 }}
+                    className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white"
+                    style={{
+                      background: placing ? 'rgba(176,125,107,0.5)' : 'linear-gradient(135deg, #B07D6B, #C4956A)',
+                      border: 'none',
+                      cursor: placing ? 'not-allowed' : 'pointer',
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}>
+                    {placing ? 'Processing...' : `Place Order — ${SITE.currency.symbol}${total.toFixed(0)}`}
+                  </motion.button>
                 </div>
               </div>
             </motion.div>

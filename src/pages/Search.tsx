@@ -348,16 +348,18 @@ export const SearchPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                  {results.map((product, index) => (
-                    <motion.div
-                      key={product.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <ProductCard product={product} />
-                    </motion.div>
-                  ))}
+                  {results.flatMap((product, index) =>
+                    (product.images?.length ? product.images : ['']).map((_, imgIdx) => (
+                      <motion.div
+                        key={`${product.id}-${imgIdx}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <ProductCard product={product} imageIndex={imgIdx} />
+                      </motion.div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
