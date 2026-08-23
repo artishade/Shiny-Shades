@@ -387,7 +387,7 @@ export const NewArrivalsPage: React.FC = () => {
       <Head>
         <title>New Arrivals | Shiny Shades — Latest Women's Fashion</title>
         <meta name="description" content="Shop the latest arrivals at Shiny Shades. Fresh styles in lingerie, dresses, and women's fashion — new drops every week." />
-        <link rel="canonical" href="https://shinyshades.vercel.app/new-arrivals" />
+        <link rel="canonical" href="https://www.shinyshades.store/new-arrivals" />
       </Head>
       <div className="min-h-screen pt-4 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

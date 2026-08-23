@@ -13,12 +13,17 @@ export const uploadToCloudinary = async (file: File) => {
 
     formData.append('file', compressedFile);
 
-    formData.append(
-        'upload_preset',
-        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
-    );
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    if (!uploadPreset) {
+        throw new Error('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET is not defined');
+    }
+
+    formData.append('upload_preset', uploadPreset);
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+        throw new Error('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is not defined');
+    }
 
     const res = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,

@@ -385,7 +385,7 @@ export const SalePage: React.FC = () => {
             <Head>
                 <title>Sale | Shiny Shades — Women's Fashion Deals Bangladesh</title>
                 <meta name="description" content="Shop Shiny Shades's sale collection. Discounted women's fashion including lingerie, dresses and more — delivered across Bangladesh." />
-                <link rel="canonical" href="https://shinyshades.vercel.app/sale" />
+                <link rel="canonical" href="https://www.shinyshades.store/sale" />
             </Head>
             <div className="min-h-screen pt-4 pb-16">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -638,7 +638,7 @@ export const SalePage: React.FC = () => {
 };
 
 SalePage.getLayout = function getLayout(page: React.ReactElement) {
-  return <CustomerLayout>{page}</CustomerLayout>;
+    return <CustomerLayout>{page}</CustomerLayout>;
 };
 
 export default SalePage;

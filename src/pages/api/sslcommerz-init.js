@@ -10,7 +10,7 @@
 //   SSLCOMMERZ_STORE_ID
 //   SSLCOMMERZ_STORE_PASSWORD
 //   SSLCOMMERZ_IS_SANDBOX        'true' while testing, 'false' when live
-//   PUBLIC_SITE_URL              e.g.https://shinyshades.vercel.app/
+//   PUBLIC_SITE_URL              e.g.https://www.shinyshades.store/
 // ===================================================
 import { checkRateLimit, getClientIp } from './_lib/rateLimit.js';
 

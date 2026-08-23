@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build:sitemap": "node scripts/generate-sitemap.js",
+    "build:sitemap": "node scripts/generate-sitemap.mjs",
     "build": "npm run build:sitemap && next build",
     "start": "next start",
     "lint": "next lint"

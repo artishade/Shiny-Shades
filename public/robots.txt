@@ -6,4 +6,4 @@ Disallow: /admin/
 Disallow: /cart
 Disallow: /checkout
 
-Sitemap: https://shinyshades.vercel.app/sitemap.xml
+Sitemap: https://www.shinyshades.store/sitemap.xml
