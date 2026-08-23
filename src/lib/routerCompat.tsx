@@ -44,13 +44,16 @@ type NavigateOptions = { replace?: boolean };
 
 export function useNavigate() {
   const router = useRouter();
+
   return useCallback(
     (to: string | number, options?: NavigateOptions) => {
+      if (!router.isReady) return;
+
       if (typeof to === 'number') {
-        // Only `-1` (go back) was ever used in this codebase.
         router.back();
         return;
       }
+
       if (options?.replace) {
         router.replace(to);
       } else {
