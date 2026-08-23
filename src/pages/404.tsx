@@ -51,8 +51,10 @@ export const NotFoundPage: React.FC = () => {
     );
 };
 
-NotFoundPage.getLayout = function getLayout(page: React.ReactElement) {
-  return <CustomerLayout>{page}</CustomerLayout>;
-};
+const getLayout = (page: React.ReactElement) => (
+    <CustomerLayout>{page}</CustomerLayout>
+);
+
+(NotFoundPage as typeof NotFoundPage & { getLayout?: typeof getLayout }).getLayout = getLayout;
 
 export default NotFoundPage;
