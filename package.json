@@ -1,0 +1,51 @@
+{
+  "name": "shiny-shades",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build:sitemap": "node scripts/generate-sitemap.js",
+    "build": "npm run build:sitemap && next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@cloudinary/react": "^1.14.4",
+    "@cloudinary/url-gen": "^1.22.0",
+    "@stripe/react-stripe-js": "^6.6.0",
+    "@stripe/stripe-js": "^9.8.0",
+    "@supabase/supabase-js": "^2.105.4",
+    "@vercel/analytics": "^2.0.1",
+    "browser-image-compression": "^2.0.2",
+    "clsx": "2.1.1",
+    "cloudinary": "^2.10.0",
+    "color-name-list": "^14.40.0",
+    "cookie": "^1.1.1",
+    "framer-motion": "^12.38.0",
+    "html2canvas": "1.4.1",
+    "jspdf": "2.5.2",
+    "jspdf-autotable": "3.8.4",
+    "lucide-react": "^0.460.0",
+    "nanoid": "^5.1.11",
+    "nearest-color": "^0.4.4",
+    "next": "^15.1.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-easy-crop": "^6.0.2",
+    "react-facebook-pixel": "^1.0.4",
+    "stripe": "^17.4.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "4.1.17",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.17",
+    "@types/nearest-color": "^0.4.1",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "19.2.3",
+    "dotenv": "^16.4.5",
+    "postcss": "^8.5.15",
+    "typescript": "5.9.3"
+  }
+}
