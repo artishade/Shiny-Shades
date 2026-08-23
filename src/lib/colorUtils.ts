@@ -150,8 +150,8 @@ export function resolveColorHex(input: string | undefined | null, fallback = '#C
   // 6. Nearest color fuzzy matching
   try {
     const matched = getNearestColor(lower);
-    if (matched && (matched.value || matched.hex)) {
-      const val = matched.value || matched.hex;
+    if (matched?.value) {
+      const val = matched.value;
       colorCache.set(raw, val);
       return val;
     }
