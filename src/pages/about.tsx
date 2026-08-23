@@ -374,8 +374,10 @@ export const AboutUsPage: React.FC = () => {
 };
 
 
-AboutUsPage.getLayout = function getLayout(page: React.ReactElement) {
-  return <CustomerLayout>{page}</CustomerLayout>;
-};
+const getLayout = (page: React.ReactElement) => (
+  <CustomerLayout>{page}</CustomerLayout>
+);
+
+(AboutUsPage as typeof AboutUsPage & { getLayout?: typeof getLayout }).getLayout = getLayout;
 
 export default AboutUsPage;

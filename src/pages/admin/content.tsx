@@ -17,8 +17,8 @@ import {
   type HeroPosition,
   type HeroExtraComponent,
 } from '@/lib/heroLayout';
-import { NewArrivalsHero } from '@/pages/NewArrivals';
-import { SaleHero } from '@/pages/Sale';
+import { NewArrivalsHero } from '@/pages/new-arrivals';
+import { SaleHero } from '@/pages/sale';
 
 const gradients = [
   'linear-gradient(135deg, #F4C2C2, #E6E6FA, #F7E7CE)',

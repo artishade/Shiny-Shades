@@ -9,3 +9,9 @@ export type NextPageWithLayout<P = Record<string, unknown>, IP = P> = NextPage<P
 export type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
+
+declare module 'react' {
+  interface FunctionComponent<P = {}> {
+    getLayout?: (page: ReactElement) => ReactNode;
+  }
+}
