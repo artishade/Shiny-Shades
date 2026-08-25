@@ -158,17 +158,28 @@ export const CategoryPage: React.FC = () => {
     if (!category) return null;
 
     const canonical = `${ORIGIN}/category/${category.slug}`;
-    const pageTitle = `${category.name} | ${BRAND.fullName}`;
+    // Admin-set SEO Title wins; auto-generated title is only the fallback.
+    const pageTitle = category.seoTitle?.trim() || `${category.name} | ${BRAND.fullName}`;
 
     const countStr =
       !loading && products.length > 0
         ? ` Browse ${products.length} products.`
         : '';
-    const rawDesc = category.description
+    const rawDesc = category.seoDescription?.trim() || (category.description
       ? `${category.description}${countStr} Shop ${category.name} at ${BRAND.fullName} — fast delivery across Bangladesh.`
-      : `Shop ${category.name} at ${BRAND.fullName}. Premium women's ${category.name.toLowerCase()} with fast delivery across Bangladesh.${countStr}`;
+      : `Shop ${category.name} at ${BRAND.fullName}. Premium women's ${category.name.toLowerCase()} with fast delivery across Bangladesh.${countStr}`);
     const metaDescription =
       rawDesc.length > 160 ? rawDesc.slice(0, 157) + '...' : rawDesc;
+
+    // Admin-set SEO Keywords win; auto-generated keyword list is only the fallback.
+    const metaKeywords = category.seoKeywords?.trim() || [
+      category.name,
+      `${category.name} Bangladesh`,
+      `buy ${category.name}`,
+      `${category.name} online`,
+      BRAND.fullName,
+      'women fashion Bangladesh',
+    ].join(', ');
 
     const ogImage = category.image?.startsWith('http')
       ? category.image
@@ -232,6 +243,7 @@ export const CategoryPage: React.FC = () => {
       canonical,
       pageTitle,
       metaDescription,
+      metaKeywords,
       ogImage,
       collectionPageSchema,
       itemListSchema,
@@ -283,17 +295,7 @@ export const CategoryPage: React.FC = () => {
           {/* Primary */}
           <title>{seoData.pageTitle}</title>
           <meta name="description" content={seoData.metaDescription} />
-          <meta
-            name="keywords"
-            content={[
-              category.name,
-              `${category.name} Bangladesh`,
-              `buy ${category.name}`,
-              `${category.name} online`,
-              BRAND.fullName,
-              'women fashion Bangladesh',
-            ].join(', ')}
-          />
+          <meta name="keywords" content={seoData.metaKeywords} />
           <meta
             name="robots"
             content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"

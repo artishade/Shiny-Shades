@@ -28,6 +28,7 @@ import { getOptimizedImageUrl, getResponsiveSrcSet } from '@/lib/cloudinary';
 import { siteConfig, SITE } from '@/config/siteConfig';
 import { BRAND } from '@/config/brandingConfig';
 import { CONTACT } from '@/config/contactConfig';
+import { useContentStore } from '@/store/contentStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -339,14 +340,23 @@ RecentlyViewedProducts.displayName = 'RecentlyViewedProducts';
 // ─── Home page ────────────────────────────────────────────────────────────────
 
 export const HomePage: React.FC = () => {
+  // Admin → Content → SEO Settings values win; fall back to the source defaults
+  // below only when the panel field is still empty.
+  const siteSettings = useContentStore((s) => s.content.siteSettings);
+  const pageTitle = siteSettings.defaultTitle?.trim() || PAGE_TITLE;
+  const pageDescription = siteSettings.defaultDescription?.trim() || PAGE_DESCRIPTION;
+  const pageKeywords = siteSettings.keywords?.length
+    ? siteSettings.keywords.join(', ')
+    : siteConfig.keywords.join(', ');
+
   return (
     <>
       {/* ── SEO HEAD ──────────────────────────────────────────────────────── */}
       <Head>
         {/* ── Primary meta ──────────────────────────────────────────────── */}
-        <title>{PAGE_TITLE}</title>
-        <meta name="description" content={PAGE_DESCRIPTION} />
-        <meta name="keywords" content={siteConfig.keywords.join(', ')} />
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <meta name="keywords" content={pageKeywords} />
         <meta
           name="robots"
           content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
@@ -374,8 +384,8 @@ export const HomePage: React.FC = () => {
         {/* ── Open Graph ────────────────────────────────────────────────── */}
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content={BRAND.fullName} />
-        <meta property="og:title" content={PAGE_TITLE} />
-        <meta property="og:description" content={PAGE_DESCRIPTION} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
         <meta property="og:url" content={CANONICAL} />
         <meta property="og:image" content={OG_IMAGE} />
         <meta property="og:image:secure_url" content={OG_IMAGE} />
@@ -391,8 +401,8 @@ export const HomePage: React.FC = () => {
 
         {/* ── Twitter Card ──────────────────────────────────────────────── */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={PAGE_TITLE} />
-        <meta name="twitter:description" content={PAGE_DESCRIPTION} />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
         <meta name="twitter:image" content={OG_IMAGE} />
         <meta
           name="twitter:image:alt"

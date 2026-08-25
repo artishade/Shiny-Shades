@@ -15,6 +15,9 @@ function rowToCategory(row: Record<string, unknown>): Category {
     gradient: String(row.gradient ?? ''),
     createdAt: String(row.created_at ?? new Date().toISOString()),
     parentId: row.parent_id ? String(row.parent_id) : null,
+    seoTitle: row.seo_title ? String(row.seo_title) : '',
+    seoDescription: row.seo_description ? String(row.seo_description) : '',
+    seoKeywords: row.seo_keywords ? String(row.seo_keywords) : '',
   };
 }
 
@@ -28,6 +31,9 @@ function categoryToRow(cat: Partial<Category>): Record<string, unknown> {
   if (cat.productCount !== undefined) row.product_count = cat.productCount;
   if (cat.gradient !== undefined) row.gradient = cat.gradient;
   if (cat.parentId !== undefined) row.parent_id = cat.parentId || null;
+  if (cat.seoTitle !== undefined) row.seo_title = cat.seoTitle || null;
+  if (cat.seoDescription !== undefined) row.seo_description = cat.seoDescription || null;
+  if (cat.seoKeywords !== undefined) row.seo_keywords = cat.seoKeywords || null;
   return row;
 }
 

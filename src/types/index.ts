@@ -54,6 +54,12 @@ export interface Category {
   images?: string[];
   /** ID of the parent category. Undefined/null = top-level category. */
   parentId?: string | null;
+  /** Admin-set SEO title — falls back to auto-generated title when empty */
+  seoTitle?: string;
+  /** Admin-set SEO meta description — falls back to auto-generated description when empty */
+  seoDescription?: string;
+  /** Admin-set SEO keywords, comma separated — falls back to auto-generated keywords when empty */
+  seoKeywords?: string;
 }
 
 // ===== Cart Types =====
