@@ -88,8 +88,6 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
   const navLinks = [
     { label: 'Home', path: '/' },
     { label: 'Shop', path: '/shop' },
-    { label: 'New Arrivals', path: '/new-arrivals' },
-    { label: 'Sale', path: '/sale' },
   ];
 
   const isActive = (path: string) => {

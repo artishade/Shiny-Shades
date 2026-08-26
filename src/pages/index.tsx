@@ -19,7 +19,6 @@ import {
   FeaturedCollection,
   CategoryShowcase,
   TrendingProducts,
-  NewArrivals,
 } from '@/components/home';
 import { FadeIn, SectionHeader, PriceDisplay } from '@/components/ui';
 import { useProductStore } from '@/store';
@@ -443,16 +442,14 @@ export const HomePage: React.FC = () => {
         Render order is intentional for Core Web Vitals:
           1. Hero        — LCP candidate; above-fold; image has fetchPriority="high"
           2. BannerSlider— above-fold promotional content
-          3. NewArrivals — first product section; slightly below fold
-          4. TrendingProducts
-          5. FeaturedCollection
-          6. CategoryShowcase
-          7. RecentlyViewedProducts — personalised; lazy-loaded images only
+          3. TrendingProducts
+          4. FeaturedCollection
+          5. CategoryShowcase
+          6. RecentlyViewedProducts — personalised; lazy-loaded images only
       */}
       <main id="main-content">
         <Hero />
         <BannerSlider />
-        <NewArrivals />
         <TrendingProducts />
         <FeaturedCollection />
         <CategoryShowcase />
