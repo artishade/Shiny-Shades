@@ -36,6 +36,7 @@ import type { Product } from '@/types';
 import { trackViewContent, trackAddToCart } from '@/lib/facebookPixel';
 import { SITE } from '@/config/siteConfig';
 import { BRAND, UI } from '@/config/brandingConfig';
+import type { GetStaticPaths, GetStaticProps } from 'next';
 
 // ─── Fast In-Memory Color Resolver (Zero Heavy Dependencies) ──────────────────
 const FAST_COLORS: Record<string, string> = {
@@ -104,7 +105,7 @@ const normalise = (p: any): Product => ({
   description: p.description || '',
   shortDescription: p.short_description || '',
   price: Number(p.price) || 0,
-  comparePrice: p.compare_price ? Number(p.compare_price) : undefined,
+  comparePrice: p.compare_price ? Number(p.compare_price) : 0,
   images: Array.isArray(p.images) ? p.images : [],
   videoUrl: p.video_url || '',
   category: p.category_name || p.category || '',
@@ -129,6 +130,21 @@ const normalise = (p: any): Product => ({
 
 const ORIGIN = SITE.domain.replace(/\/$/, '');
 
+// ─── Server-side fetcher (used by getStaticProps) ─────────────────────────────
+// Avoids importing the anon-keyed `supabase` client into the build step, so
+// `next build` works without NEXT_PUBLIC_SUPABASE_* on the build host. Falls
+// back to the anon client if the service-role key isn't configured.
+const getServerSupabase = () => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (!url || !key) return null;
+  // Lazy require so this never runs in the browser bundle.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { createClient } = require('@supabase/supabase-js');
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+
 // ─── Skeleton Loader ──────────────────────────────────────────────────────────
 const ProductSkeleton = memo(() => (
   <div className="min-h-screen pt-24 pb-16" aria-busy="true">
@@ -150,16 +166,24 @@ const ProductSkeleton = memo(() => (
 ProductSkeleton.displayName = 'ProductSkeleton';
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export const ProductDetailPage: React.FC = () => {
+interface ProductDetailPageProps {
+  initialProduct?: Product | null;
+  initialRelated?: Product[];
+}
+
+export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
+  initialProduct = null,
+  initialRelated = [],
+}) => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
   const addRecentlyViewed = useRecentlyViewedStore((s) => s.addProduct);
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [related, setRelated] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState<Product | null>(initialProduct);
+  const [related, setRelated] = useState<Product[]>(initialRelated);
+  const [loading, setLoading] = useState<boolean>(!initialProduct);
   const [notFound, setNotFound] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
@@ -888,6 +912,88 @@ export const ProductDetailPage: React.FC = () => {
 
 ProductDetailPage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── ISR: pre-build the most-recent products, regenerate the rest on demand ──
+export const getStaticPaths: GetStaticPaths = async () => {
+  const client = getServerSupabase();
+  if (!client) {
+    // No Supabase creds at build time — let Next render every slug on demand.
+    return { paths: [], fallback: 'blocking' };
+  }
+
+  try {
+    const { data, error } = await client
+      .from('products')
+      .select('slug, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(50);
+
+    if (error || !data) {
+      return { paths: [], fallback: 'blocking' };
+    }
+
+    return {
+      paths: data
+        .filter((p: { slug: string | null }) => Boolean(p.slug))
+        .map((p: { slug: string }) => ({ params: { slug: p.slug } })),
+      // Any slug not in the list is generated on first request and cached.
+      fallback: 'blocking',
+    };
+  } catch {
+    return { paths: [], fallback: 'blocking' };
+  }
+};
+
+export const getStaticProps: GetStaticProps<{
+  product: Product | null;
+  related: Product[];
+}> = async (ctx) => {
+  const slug = ctx.params?.slug;
+  if (typeof slug !== 'string' || !slug) {
+    return { notFound: true, revalidate: 60 };
+  }
+
+  const client = getServerSupabase();
+  if (!client) {
+    // Can't fetch at build time — let the client component handle it and
+    // revalidate this empty shell quickly.
+    return { props: { product: null, related: [] }, revalidate: 60 };
+  }
+
+  try {
+    const { data, error } = await client
+      .from('products')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (error || !data) {
+      return { notFound: true, revalidate: 60 };
+    }
+
+    const product = normalise(data);
+
+    let related: Product[] = [];
+    if (product.categorySlug) {
+      const { data: relatedData } = await client
+        .from('products')
+        .select('*')
+        .eq('category_slug', product.categorySlug)
+        .neq('id', product.id)
+        .limit(8);
+      related = (relatedData || []).map(normalise);
+    }
+
+    return {
+      props: { product, related },
+      // Regenerate at most once a minute — keeps price/stock roughly fresh
+      // without hammering Supabase on every visit.
+      revalidate: 60,
+    };
+  } catch {
+    return { notFound: true, revalidate: 60 };
+  }
 };
 
 export default ProductDetailPage;

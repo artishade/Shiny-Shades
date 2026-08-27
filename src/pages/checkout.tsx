@@ -15,6 +15,7 @@ import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from '@/lib/routerCompat';
 import Head from 'next/head';
+import type { GetServerSideProps } from 'next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield,
@@ -1224,6 +1225,15 @@ export const CheckoutPage: React.FC = () => {
 
 CheckoutPage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── CSR: checkout state lives in client-side stores (cart / order / coupon) ─
+// We still opt in to SSR so the layout, fonts and SEO meta render server-side;
+// the actual form fields, totals and offers hydrate from Zustand. The
+// Cache-Control: no-store header keeps every visitor's checkout private.
+export const getServerSideProps: GetServerSideProps = async ({ res }) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  return { props: {} };
 };
 
 export default CheckoutPage;

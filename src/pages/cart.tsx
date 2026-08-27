@@ -13,6 +13,7 @@ import { useCartStore } from '@/store';
 import { SITE } from '@/config/siteConfig';
 import Head from 'next/head';
 import { trackPageView, trackViewContent } from '@/lib/facebookPixel';
+import type { GetServerSideProps } from 'next';
 
 export const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -391,6 +392,15 @@ React.useEffect(() => {
 
 CartPage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── CSR: cart contents live in the client-side Zustand store ─────────────────
+// We still opt in to SSR (rather than `next/dynamic` ssr:false) so the page
+// layout, fonts and SEO meta render server-side; the actual cart data shows up
+// after hydration. Cache-Control: no-store keeps every visitor's cart private.
+export const getServerSideProps: GetServerSideProps = async ({ res }) => {
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
+  return { props: {} };
 };
 
 export default CartPage;

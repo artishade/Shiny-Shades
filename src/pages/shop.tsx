@@ -78,7 +78,7 @@ const normaliseProduct = (p: any) => ({
   description: p.description ?? '',
   shortDescription: p.short_description ?? '',
   price: Number(p.price) || 0,
-  comparePrice: p.compare_price ? Number(p.compare_price) : undefined,
+  comparePrice: p.compare_price ? Number(p.compare_price) : 0,
   images: Array.isArray(p.images) ? p.images : [],
   videoUrl: p.video_url ?? '',
   category: p.category_name ?? p.category ?? '',

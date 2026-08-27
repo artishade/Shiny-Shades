@@ -15,11 +15,50 @@ import { FadeIn } from '@/components/ui';
 import { useCategoryStore } from '@/store';
 import { SITE } from '@/config/siteConfig';
 import { BRAND } from '@/config/brandingConfig';
+import type { Category } from '@/types';
+import type { GetStaticProps } from 'next';
 
 const ORIGIN = SITE.domain.replace(/\/$/, '');
 
-export const CategoriesPage: React.FC = () => {
-  const { categories, loadCategories, loading } = useCategoryStore();
+// ─── Server-side Supabase client (used by getStaticProps) ─────────────────────
+// Prefers the service-role key so we bypass RLS during builds; falls back to
+// the anon key. Lazily `require`'d so this never ends up in the browser bundle.
+const getServerSupabase = () => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (!url || !key) return null;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { createClient } = require('@supabase/supabase-js');
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+
+const rowToCategory = (row: any): Category => ({
+  id: String(row.id),
+  name: String(row.name ?? ''),
+  slug: String(row.slug ?? ''),
+  description: String(row.description ?? ''),
+  image: String(row.image ?? ''),
+  productCount: Number(row.product_count ?? 0),
+  gradient: String(row.gradient ?? ''),
+  createdAt: String(row.created_at ?? new Date().toISOString()),
+  parentId: row.parent_id ? String(row.parent_id) : null,
+  seoTitle: row.seo_title ? String(row.seo_title) : '',
+  seoDescription: row.seo_description ? String(row.seo_description) : '',
+  seoKeywords: row.seo_keywords ? String(row.seo_keywords) : '',
+});
+
+interface CategoriesPageProps {
+  initialCategories?: Category[];
+}
+
+export const CategoriesPage: React.FC<CategoriesPageProps> = ({ initialCategories = [] }) => {
+  const { categories: storeCategories, loadCategories, loading } = useCategoryStore();
+
+  // Prefer ISR-supplied categories when present so the SSR HTML matches the
+  // first client render. The store still kicks off its own fetch to keep
+  // everything else in sync.
+  const categories = initialCategories.length > 0 ? initialCategories : storeCategories;
 
   useEffect(() => {
     loadCategories();
@@ -136,6 +175,33 @@ export const CategoriesPage: React.FC = () => {
 
 CategoriesPage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── ISR: re-render the categories index every 10 minutes ─────────────────────
+export const getStaticProps: GetStaticProps<{ categories: Category[] }> = async () => {
+  const client = getServerSupabase();
+  if (!client) {
+    // No Supabase creds at build time — let the client fetch.
+    return { props: { categories: [] }, revalidate: 600 };
+  }
+
+  try {
+    const { data, error } = await client
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error || !data) {
+      return { props: { categories: [] }, revalidate: 600 };
+    }
+
+    return {
+      props: { categories: data.map(rowToCategory) },
+      revalidate: 600,
+    };
+  } catch {
+    return { props: { categories: [] }, revalidate: 600 };
+  }
 };
 
 export default CategoriesPage;

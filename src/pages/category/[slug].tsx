@@ -14,10 +14,41 @@ import { supabase } from '@/lib/supabase';
 import { useCategoryStore } from '@/store';
 import { SITE } from '@/config/siteConfig';
 import { BRAND } from '@/config/brandingConfig';
-import type { Product } from '@/types';
+import type { Product, Category } from '@/types';
+import type { GetStaticPaths, GetStaticProps } from 'next';
 
 // Strip trailing slash once — used in all canonical / schema URLs
 const ORIGIN = SITE.domain.replace(/\/$/, '');
+
+// ─── Server-side fetcher (used by getStaticProps) ─────────────────────────────
+// Prefers the service-role key so we bypass RLS during builds; falls back to
+// the anon key. Lazily `require`'d so this never ends up in the browser bundle.
+const getServerSupabase = () => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (!url || !key) return null;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { createClient } = require('@supabase/supabase-js');
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+
+// Row → Category shape (mirrors categoryStore.rowToCategory but kept local so
+// this file is self-contained at build time and doesn't drag the store in).
+const rowToCategory = (row: any): Category => ({
+  id: String(row.id),
+  name: String(row.name ?? ''),
+  slug: String(row.slug ?? ''),
+  description: String(row.description ?? ''),
+  image: String(row.image ?? ''),
+  productCount: Number(row.product_count ?? 0),
+  gradient: String(row.gradient ?? ''),
+  createdAt: String(row.created_at ?? new Date().toISOString()),
+  parentId: row.parent_id ? String(row.parent_id) : null,
+  seoTitle: row.seo_title ? String(row.seo_title) : '',
+  seoDescription: row.seo_description ? String(row.seo_description) : '',
+  seoKeywords: row.seo_keywords ? String(row.seo_keywords) : '',
+});
 
 // ─── Skeleton card — extracted so it never re-allocates inside the grid ───────
 const SkeletonCard = memo(() => (
@@ -41,7 +72,7 @@ const normaliseRow = (p: any): Product => ({
   description: p.description ?? '',
   shortDescription: p.short_description ?? '',
   price: Number(p.price) || 0,
-  comparePrice: p.compare_price ? Number(p.compare_price) : undefined,
+  comparePrice: p.compare_price ? Number(p.compare_price) : 0,
   images: Array.isArray(p.images) ? p.images : [],
   videoUrl: p.video_url ?? '',
   category: p.category_name ?? p.category ?? '',
@@ -64,18 +95,31 @@ const normaliseRow = (p: any): Product => ({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const CategoryPage: React.FC = () => {
+interface CategoryPageProps {
+  initialCategory?: Category | null;
+  initialProducts?: Product[];
+}
+
+export const CategoryPage: React.FC<CategoryPageProps> = ({
+  initialCategory = null,
+  initialProducts = [],
+}) => {
   const { slug } = useParams<{ slug: string }>();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [loading, setLoading] = useState<boolean>(!initialCategory || initialProducts.length === 0);
 
   // Category metadata — loaded at app boot, always available synchronously
   const { categories } = useCategoryStore();
 
+  // Prefer the SSR-provided category (so ISR pre-rendered HTML matches the
+  // first client render). Falls back to the in-memory store on the client.
   const category = useMemo(
-    () => (slug ? categories.find((c) => c.slug === slug) : undefined),
-    [slug, categories],
+    () => {
+      if (initialCategory && initialCategory.slug === slug) return initialCategory;
+      return slug ? categories.find((c) => c.slug === slug) : undefined;
+    },
+    [slug, categories, initialCategory],
   );
 
   // Parent category — set when the current category is itself a subcategory
@@ -496,6 +540,95 @@ export const CategoryPage: React.FC = () => {
 
 CategoryPage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── ISR: pre-build all category pages, regenerate every 5 min ────────────────
+export const getStaticPaths: GetStaticPaths = async () => {
+  const client = getServerSupabase();
+  if (!client) {
+    return { paths: [], fallback: 'blocking' };
+  }
+
+  try {
+    const { data, error } = await client.from('categories').select('slug');
+    if (error || !data) {
+      return { paths: [], fallback: 'blocking' };
+    }
+
+    return {
+      paths: data
+        .filter((c: { slug: string | null }) => Boolean(c.slug))
+        .map((c: { slug: string }) => ({ params: { slug: c.slug } })),
+      fallback: 'blocking',
+    };
+  } catch {
+    return { paths: [], fallback: 'blocking' };
+  }
+};
+
+export const getStaticProps: GetStaticProps<{
+  category: Category | null;
+  products: Product[];
+}> = async (ctx) => {
+  const slug = ctx.params?.slug;
+  if (typeof slug !== 'string' || !slug) {
+    return { notFound: true, revalidate: 300 };
+  }
+
+  const client = getServerSupabase();
+  if (!client) {
+    // No Supabase creds at build time — let the client component fetch.
+    return { props: { category: null, products: [] }, revalidate: 300 };
+  }
+
+  try {
+    // Resolve the category itself.
+    const { data: catRow, error: catErr } = await client
+      .from('categories')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (catErr || !catRow) {
+      return { notFound: true, revalidate: 300 };
+    }
+
+    const category = rowToCategory(catRow);
+
+    // Collect every slug we want to fetch products for — the category itself
+    // plus any direct subcategories, matching the client-side logic.
+    const slugs: string[] = [category.slug];
+    const { data: subRows } = await client
+      .from('categories')
+      .select('slug')
+      .eq('parent_id', category.id);
+    if (subRows) {
+      for (const r of subRows) {
+        if (r?.slug) slugs.push(String(r.slug));
+      }
+    }
+
+    const { data: productRows, error: prodErr } = await client
+      .from('products')
+      .select('*')
+      .in('category_slug', slugs)
+      .order('created_at', { ascending: false });
+
+    if (prodErr) {
+      // Category exists but products failed — still render the page shell.
+      return { props: { category, products: [] }, revalidate: 300 };
+    }
+
+    const products = (productRows || []).map(normaliseRow);
+
+    return {
+      props: { category, products },
+      // Category product lists change less often than product pages.
+      revalidate: 300,
+    };
+  } catch {
+    return { notFound: true, revalidate: 300 };
+  }
 };
 
 export default CategoryPage;
