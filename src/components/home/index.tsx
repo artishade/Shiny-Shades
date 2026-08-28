@@ -1,5 +1,4 @@
 export { Hero } from './Hero';
-export { NewArrivals } from './NewArrivals';
 export { BannerSlider } from './BannerSlider';
 export { CategoryShowcase } from './CategoryShowcase';
 export { Category } from './Category';
