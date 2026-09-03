@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 // 1. Read domain from siteConfig.ts
 const siteConfigPath = path.join(__dirname, '../src/config/siteConfig.ts');
-let domain = 'https://shinyshades.vercel.app'; // fallback
+let domain = 'https://www.shinyshades.store'; // fallback
 if (fs.existsSync(siteConfigPath)) {
   const content = fs.readFileSync(siteConfigPath, 'utf8');
   const match = content.match(/domain:\s*['"]([^'"]+)['"]/);

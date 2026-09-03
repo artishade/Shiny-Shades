@@ -18,7 +18,7 @@ export const SITE = {
     facebook: CONTACT.facebook,
 
     /** Canonical domain (no trailing slash) */
-    domain: 'https://shinyshades.vercel.app',
+    domain: 'https://www.shinyshades.store',
 
     /** SEO / meta — derived from brandingConfig so renaming propagates here too */
     defaultTitle: BRAND.defaultTitle,
