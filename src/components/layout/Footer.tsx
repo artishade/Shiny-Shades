@@ -257,13 +257,8 @@ export const Footer: React.FC = () => {
               )}
 
               <li>
-                <Link to="/new-arrivals" className="text-sm text-white/60 hover:text-rose-gold-dark transition-colors">
+                <Link to="/shop?sort=newest" className="text-sm text-white/60 hover:text-rose-gold-dark transition-colors">
                   New Arrivals
-                </Link>
-              </li>
-              <li>
-                <Link to="/sale" className="text-sm text-white/60 hover:text-rose-gold-dark transition-colors">
-                  Sale
                 </Link>
               </li>
               <li>

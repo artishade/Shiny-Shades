@@ -69,7 +69,7 @@ export const NewArrivals: React.FC = () => {
                             className="mt-[-1.5rem] mb-6"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                navigate('/new-arrivals');
+                                navigate('/shop?sort=newest');
                             }}
                         >
                             See More

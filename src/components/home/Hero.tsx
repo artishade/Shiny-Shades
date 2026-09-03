@@ -186,14 +186,6 @@ export const Hero: React.FC = () => {
                                     {content.heroButtonText}
                                     <ArrowRight size={16} aria-hidden="true" />
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="md"
-                                    onClick={() => navigate('/sale')}
-                                    aria-label="Shop sale items"
-                                >
-                                    Shop Sale
-                                </Button>
                             </motion.div>
                         )}
 

@@ -28,7 +28,7 @@ src/
 │   ├── _app.tsx          # ErrorBoundary, AppBoot (loads content+categories), PixelTracker, ScrollToTop
 │   ├── _document.tsx     # Global <head>: favicons, GTM+FB Pixel init, preconnects, <noscript> fallbacks
 │   ├── index.tsx         # Landing page (Hero, banners, featured, trending, new arrivals)
-│   ├── shop.tsx, search.tsx, new-arrivals.tsx, sale.tsx, categories.tsx
+│   ├── shop.tsx, search.tsx, categories.tsx
 │   ├── product/[slug].tsx        # PDP
 │   ├── category/[slug].tsx       # PLP
 │   ├── cart.tsx, checkout.tsx    # Cart + checkout (COD/bKash/Nagad/SSLCommerz/Stripe)

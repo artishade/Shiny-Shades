@@ -124,8 +124,6 @@ export interface ContentData {
 
   // Banners
   banners: Banner[];
-  newArrivalBanners: Banner[];
-  saleBanners: Banner[];
 
   // Announcement bar
   announcement: AnnouncementSettings;
@@ -214,8 +212,6 @@ export const defaultContent: ContentData = {
   },
 
   banners: [],
-  newArrivalBanners: [],
-  saleBanners: [],
 
   announcement: {
     enabled: true,
@@ -260,8 +256,6 @@ function mergeWithDefaults(loaded: Partial<ContentData>): ContentData {
     },
 
     banners: Array.isArray(loaded.banners) ? loaded.banners : [],
-    newArrivalBanners: Array.isArray(loaded.newArrivalBanners) ? loaded.newArrivalBanners : [],
-    saleBanners: Array.isArray(loaded.saleBanners) ? loaded.saleBanners : [],
 
     // Merge siteSettings: DB value wins; anything missing falls back to siteConfig.ts defaults
     siteSettings: {
@@ -295,7 +289,7 @@ interface ContentStore {
   /** Returns the best available page title for <title> / og:title */
   getPageTitle: (pageTitle?: string) => string;
   /** Returns active banners from a given banner list */
-  getActiveBanners: (type: 'banners' | 'newArrivalBanners' | 'saleBanners') => Banner[];
+  getActiveBanners: (type: 'banners') => Banner[];
 
   // ── Internal helpers ──────────────────────────────────────────────────────
   _setError: (code: ContentError['code'], message: string) => void;

@@ -1,7 +1,7 @@
 /* ===================================================
    Shiny Shades - Admin Content Editor
    Adds: hero free-drag component builder, video upload
-   (drag-and-drop) for Banner / New Arrival / Sale banners
+   (drag-and-drop) for the Banner Slider
    =================================================== */
 
 import { AdminAuthLayout } from '@/components/layout/AdminAuthLayout';
@@ -17,8 +17,6 @@ import {
   type HeroPosition,
   type HeroExtraComponent,
 } from '@/lib/heroLayout';
-import { NewArrivalsHero } from '@/pages/new-arrivals';
-import { SaleHero } from '@/pages/sale';
 
 const gradients = [
   'linear-gradient(135deg, #F4C2C2, #E6E6FA, #F7E7CE)',
@@ -39,10 +37,7 @@ const announcementColorPresets = [
 
 // ── Banner media target dimensions ──────────────────────────────────────────
 // Hero + Banner Slider: 1920×840 desktop, 1440×810 mobile (both requested by design).
-// New Arrival / Sale page banners: desktop crop is unchanged (already correct),
-// only the mobile crop now matches the same 1440×810 widescreen shape.
 const DESKTOP_BANNER_ASPECT = 1920 / 840; // 16 / 7
-const DEFAULT_DESKTOP_ASPECT = 16 / 6; // unchanged existing shape for New Arrival / Sale desktop crops
 const MOBILE_BANNER_ASPECT = 1440 / 810; // 16 / 9
 
 type BannerMediaType = 'gradient' | 'image' | 'video';
@@ -292,22 +287,6 @@ export const AdminContent: React.FC = () => {
   const [bannerMobileFiles, setBannerMobileFiles] = useState<Record<string, File>>({});
   const [bannerMobilePreviews, setBannerMobilePreviews] = useState<Record<string, string>>({});
 
-  // New Arrival banner media state
-  const [newArrivalBannerFiles, setNewArrivalBannerFiles] = useState<Record<string, File>>({});
-  const [newArrivalBannerPreviews, setNewArrivalBannerPreviews] = useState<Record<string, string>>({});
-  const [newArrivalBannerVideoFiles, setNewArrivalBannerVideoFiles] = useState<Record<string, File>>({});
-  const [newArrivalBannerVideoPreviews, setNewArrivalBannerVideoPreviews] = useState<Record<string, string>>({});
-  const [newArrivalBannerMobileFiles, setNewArrivalBannerMobileFiles] = useState<Record<string, File>>({});
-  const [newArrivalBannerMobilePreviews, setNewArrivalBannerMobilePreviews] = useState<Record<string, string>>({});
-
-  // Sale banner media state
-  const [saleBannerFiles, setSaleBannerFiles] = useState<Record<string, File>>({});
-  const [saleBannerPreviews, setSaleBannerPreviews] = useState<Record<string, string>>({});
-  const [saleBannerVideoFiles, setSaleBannerVideoFiles] = useState<Record<string, File>>({});
-  const [saleBannerVideoPreviews, setSaleBannerVideoPreviews] = useState<Record<string, string>>({});
-  const [saleBannerMobileFiles, setSaleBannerMobileFiles] = useState<Record<string, File>>({});
-  const [saleBannerMobilePreviews, setSaleBannerMobilePreviews] = useState<Record<string, string>>({});
-
   // Hero drag-and-drop builder state
   const heroCanvasRef = useRef<HTMLDivElement>(null);
   const [draggingHeroId, setDraggingHeroId] = useState<string | null>(null);
@@ -418,75 +397,6 @@ export const AdminContent: React.FC = () => {
   const removeBanner = (index: number) =>
     setContent({ ...content, banners: content.banners.filter((_, i) => i !== index) });
 
-  // ── New Arrival Banner helpers ───────────────────────────────────────────────
-
-  const updateNewArrivalBanner = (index: number, field: string, value: string | boolean) => {
-    const newArrivalBanners = [...content.newArrivalBanners];
-    newArrivalBanners[index] = { ...newArrivalBanners[index], [field]: value };
-    setContent({ ...content, newArrivalBanners });
-  };
-
-  const addNewArrivalBanner = () => {
-    setContent({
-      ...content,
-      newArrivalBanners: [
-        ...(content.newArrivalBanners ?? []),
-        {
-          id: Date.now().toString(),
-          title: 'New Arrival Banner',
-          subtitle: 'Banner description',
-          buttonText: 'Shop Now',
-          buttonLink: '/new-arrivals',
-          gradient: gradients[0],
-          imageUrl: '',
-          videoUrl: '',
-          mediaType: 'gradient',
-          active: true,
-        },
-      ],
-    });
-  };
-
-  const removeNewArrivalBanner = (index: number) =>
-    setContent({
-      ...content,
-      newArrivalBanners: (content.newArrivalBanners ?? []).filter((_, i) => i !== index),
-    });
-
-  // ── Sale Banner helpers ───────────────────────────────────────────────
-  const updateSaleBanner = (index: number, field: string, value: string | boolean) => {
-    const saleBanners = [...(content.saleBanners ?? [])];
-    saleBanners[index] = { ...saleBanners[index], [field]: value };
-    setContent({ ...content, saleBanners });
-  };
-
-  const addSaleBanner = () => {
-    setContent({
-      ...content,
-      saleBanners: [
-        ...(content.saleBanners ?? []),
-        {
-          id: Date.now().toString(),
-          title: 'Sale Banner',
-          subtitle: 'Limited time offers',
-          buttonText: 'Shop Sale',
-          buttonLink: '/sale',
-          gradient: gradients[0],
-          imageUrl: '',
-          videoUrl: '',
-          mediaType: 'gradient',
-          active: true,
-        },
-      ],
-    });
-  };
-
-  const removeSaleBanner = (index: number) =>
-    setContent({
-      ...content,
-      saleBanners: (content.saleBanners ?? []).filter((_, i) => i !== index),
-    });
-
   // ── Announcement helpers ─────────────────────────────────────────────────────
 
   const updateAnnouncement = (field: string, value: unknown) => {
@@ -547,62 +457,16 @@ export const AdminContent: React.FC = () => {
       }
       updatedContent = { ...updatedContent, banners: updatedBanners };
 
-      // Step 3: Upload new arrival banner images + videos
-      const updatedNewArrivalBanners = [...updatedContent.newArrivalBanners];
-      for (const [bannerId, file] of Object.entries(newArrivalBannerFiles)) {
-        const url = await uploadContentMedia(file, 'new-arrival-banners', 'image');
-        const idx = updatedNewArrivalBanners.findIndex(b => b.id === bannerId);
-        if (idx !== -1) updatedNewArrivalBanners[idx] = { ...updatedNewArrivalBanners[idx], imageUrl: url };
-      }
-      for (const [bannerId, file] of Object.entries(newArrivalBannerVideoFiles)) {
-        const url = await uploadContentMedia(file, 'new-arrival-banners', 'video');
-        const idx = updatedNewArrivalBanners.findIndex(b => b.id === bannerId);
-        if (idx !== -1) updatedNewArrivalBanners[idx] = { ...updatedNewArrivalBanners[idx], videoUrl: url };
-      }
-      for (const [bannerId, file] of Object.entries(newArrivalBannerMobileFiles)) {
-        const url = await uploadContentMedia(file, 'new-arrival-banners-mobile', 'image');
-        const idx = updatedNewArrivalBanners.findIndex(b => b.id === bannerId);
-        if (idx !== -1) updatedNewArrivalBanners[idx] = { ...updatedNewArrivalBanners[idx], imageUrlMobile: url };
-      }
-      updatedContent = { ...updatedContent, newArrivalBanners: updatedNewArrivalBanners };
-
-      // Step 4: Upload sale banner images + videos
-      const updatedSaleBanners = [...(updatedContent.saleBanners ?? [])];
-      for (const [bannerId, file] of Object.entries(saleBannerFiles)) {
-        const url = await uploadContentMedia(file, 'sale-banners', 'image');
-        const idx = updatedSaleBanners.findIndex(b => b.id === bannerId);
-        if (idx !== -1) updatedSaleBanners[idx] = { ...updatedSaleBanners[idx], imageUrl: url };
-      }
-      for (const [bannerId, file] of Object.entries(saleBannerVideoFiles)) {
-        const url = await uploadContentMedia(file, 'sale-banners', 'video');
-        const idx = updatedSaleBanners.findIndex(b => b.id === bannerId);
-        if (idx !== -1) updatedSaleBanners[idx] = { ...updatedSaleBanners[idx], videoUrl: url };
-      }
-      for (const [bannerId, file] of Object.entries(saleBannerMobileFiles)) {
-        const url = await uploadContentMedia(file, 'sale-banners-mobile', 'image');
-        const idx = updatedSaleBanners.findIndex(b => b.id === bannerId);
-        if (idx !== -1) updatedSaleBanners[idx] = { ...updatedSaleBanners[idx], imageUrlMobile: url };
-      }
-      updatedContent = { ...updatedContent, saleBanners: updatedSaleBanners };
-
-      // Step 5: Save to Supabase via store (handles upsert + local state update)
+      // Step 3: Save to Supabase via store (handles upsert + local state update)
       await saveContent(updatedContent);
 
-      // Step 6: Clean up local file state
+      // Step 4: Clean up local file state
       setHeroFile(null);
       setHeroPreview('');
       setBannerFiles({});
       setBannerPreviews({});
       setBannerVideoFiles({});
       setBannerVideoPreviews({});
-      setNewArrivalBannerFiles({});
-      setNewArrivalBannerPreviews({});
-      setNewArrivalBannerVideoFiles({});
-      setNewArrivalBannerVideoPreviews({});
-      setSaleBannerFiles({});
-      setSaleBannerPreviews({});
-      setSaleBannerVideoFiles({});
-      setSaleBannerVideoPreviews({});
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -619,7 +483,7 @@ export const AdminContent: React.FC = () => {
     }
   };
 
-  // ── Reusable banner-section renderer (used for Banner / New Arrival / Sale) ──
+  // ── Reusable banner-section renderer (used for the Banner Slider) ──
   const renderBannerSection = (
     sectionTitle: string,
     banners: BannerLike[] & { title: string; subtitle: string; buttonText: string; buttonLink: string; active: boolean }[],
@@ -637,9 +501,8 @@ export const AdminContent: React.FC = () => {
     mobilePreviews: Record<string, string>,
     setMobileFiles: React.Dispatch<React.SetStateAction<Record<string, File>>>,
     setMobilePreviews: React.Dispatch<React.SetStateAction<Record<string, string>>>,
-    // Desktop crop shape is only overridden for the Banner Slider (to match the
-    // Hero: 1920×840). New Arrival / Sale desktop crops are left as-is.
-    desktopCropAspect: number = DEFAULT_DESKTOP_ASPECT,
+    // Desktop crop shape for this section (Banner Slider matches the Hero: 1920×840).
+    desktopCropAspect: number,
   ) => (
     <div className="glass-card rounded-2xl p-6 mb-6">
       <SectionHeader
@@ -663,63 +526,25 @@ export const AdminContent: React.FC = () => {
 
           return (
             <div key={banner.id} className="border border-blush/25 rounded-xl overflow-hidden bg-white/40 hover:shadow-sm transition-shadow">
-              {sectionTitle === 'New Arrival Page Banners' || sectionTitle === 'Sale Page Banners' ? (
-                <div className="relative">
-                  <div className="pointer-events-none scale-[0.6] origin-top-left w-[166%]">
-                    {sectionTitle === 'New Arrival Page Banners' ? (
-                      <NewArrivalsHero
-                        banner={{
-                          title: banner.title,
-                          subtitle: banner.subtitle,
-                          imageUrl: imagePreviews[banner.id] || banner.imageUrl,
-                          imageUrlMobile: mobilePreviews[banner.id] || banner.imageUrlMobile,
-                          videoUrl: videoPreviews[banner.id] || banner.videoUrl,
-                          mediaType,
-                          gradient: banner.gradient,
-                        }}
-                      />
-                    ) : (
-                      <SaleHero
-                        banner={{
-                          title: banner.title,
-                          subtitle: banner.subtitle,
-                          imageUrl: imagePreviews[banner.id] || banner.imageUrl,
-                          imageUrlMobile: mobilePreviews[banner.id] || banner.imageUrlMobile,
-                          videoUrl: videoPreviews[banner.id] || banner.videoUrl,
-                          mediaType,
-                          gradient: banner.gradient,
-                        }}
-                      />
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handlers.remove(index)}
-                    className="absolute top-2 right-2 z-20 p-2 rounded-full bg-black/60 hover:bg-red-500 hover:scale-110 shadow-lg ring-1 ring-white/30 transition-all"
-                  >
-                    <Trash2 size={14} className="text-white" />
-                  </button>
+              <div className="h-20 flex items-center px-6 relative overflow-hidden" style={livePreviewStyle}>
+                {mediaType === 'video' && (videoPreviews[banner.id] || banner.videoUrl) && (
+                  <video
+                    src={videoPreviews[banner.id] || banner.videoUrl}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    muted
+                    loop
+                    autoPlay
+                    playsInline
+                  />
+                )}
+                <div className="relative flex-1 bg-white/40 backdrop-blur-sm rounded-lg px-3 py-1">
+                  <p className="font-medium text-charcoal text-sm">{banner.title}</p>
+                  <p className="text-xs text-[#6B5B55]">{banner.subtitle.substring(0, 50)}</p>
                 </div>
-              ) : (
-                <div className="h-20 flex items-center px-6 relative overflow-hidden" style={livePreviewStyle}>
-                  {mediaType === 'video' && (videoPreviews[banner.id] || banner.videoUrl) && (
-                    <video
-                      src={videoPreviews[banner.id] || banner.videoUrl}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      muted
-                      loop
-                      autoPlay
-                      playsInline
-                    />
-                  )}
-                  <div className="relative flex-1 bg-white/40 backdrop-blur-sm rounded-lg px-3 py-1">
-                    <p className="font-medium text-charcoal text-sm">{banner.title}</p>
-                    <p className="text-xs text-[#6B5B55]">{banner.subtitle.substring(0, 50)}</p>
-                  </div>
-                  <button onClick={() => handlers.remove(index)} className="relative p-1.5 rounded-lg hover:bg-white/50 ml-2">
-                    <Trash2 size={14} className="text-red-400" />
-                  </button>
-                </div>
-              )}
+                <button onClick={() => handlers.remove(index)} className="relative p-1.5 rounded-lg hover:bg-white/50 ml-2">
+                  <Trash2 size={14} className="text-red-400" />
+                </button>
+              </div>
 
               <div className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
@@ -1192,26 +1017,6 @@ export const AdminContent: React.FC = () => {
         bannerVideoPreviews, setBannerVideoFiles, setBannerVideoPreviews,
         bannerMobilePreviews, setBannerMobileFiles, setBannerMobilePreviews,
         DESKTOP_BANNER_ASPECT,
-      )}
-
-      {/* ── New Arrival Page Banners ─────────────────────────────────────────── */}
-      {renderBannerSection(
-        'New Arrival Page Banners',
-        (content.newArrivalBanners ?? []) as any,
-        { update: updateNewArrivalBanner, add: addNewArrivalBanner, remove: removeNewArrivalBanner },
-        newArrivalBannerPreviews, setNewArrivalBannerFiles, setNewArrivalBannerPreviews,
-        newArrivalBannerVideoPreviews, setNewArrivalBannerVideoFiles, setNewArrivalBannerVideoPreviews,
-        newArrivalBannerMobilePreviews, setNewArrivalBannerMobileFiles, setNewArrivalBannerMobilePreviews,
-      )}
-
-      {/* ── Sale Page Banners ────────────────────────────────────────────────── */}
-      {renderBannerSection(
-        'Sale Page Banners',
-        (content.saleBanners ?? []) as any,
-        { update: updateSaleBanner, add: addSaleBanner, remove: removeSaleBanner },
-        saleBannerPreviews, setSaleBannerFiles, setSaleBannerPreviews,
-        saleBannerVideoPreviews, setSaleBannerVideoFiles, setSaleBannerVideoPreviews,
-        saleBannerMobilePreviews, setSaleBannerMobileFiles, setSaleBannerMobilePreviews,
       )}
     </div>
   );
