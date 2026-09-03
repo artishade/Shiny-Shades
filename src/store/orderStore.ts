@@ -45,7 +45,6 @@ export interface RealOrder {
 
 // ─── Row ↔ Domain mappers ─────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowToOrder(row: any): RealOrder {
   return {
     id: String(row.id),

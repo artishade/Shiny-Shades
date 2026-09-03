@@ -46,7 +46,7 @@ export const TrendingProducts: React.FC = () => {
 
             {trending.length === 0 ? (
                 <div className="text-center py-8 text-warm-gray">
-                    <p>No trending products yet. Mark products as "Trending" in the admin panel.</p>
+                    <p>No trending products yet. Mark products as &quot;Trending&quot; in the admin panel.</p>
                 </div>
             ) : (
                 <div className="relative mt-4">

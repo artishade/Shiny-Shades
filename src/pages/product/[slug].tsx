@@ -140,7 +140,6 @@ const getServerSupabase = () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   if (!url || !key) return null;
   // Lazy require so this never runs in the browser bundle.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createClient } = require('@supabase/supabase-js');
   return createClient(url, key, { auth: { persistSession: false } });
 };

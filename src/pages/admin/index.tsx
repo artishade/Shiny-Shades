@@ -5,7 +5,7 @@
 import { useAdminAuthStore } from '@/store';
 import { BRAND } from '@/config/brandingConfig';
 import React, { useState } from 'react';
-import { useNavigate } from '@/lib/routerCompat';
+import { useNavigate, Link } from '@/lib/routerCompat';
 import { motion } from 'framer-motion';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui';
@@ -100,9 +100,9 @@ export const AdminLoginPage: React.FC = () => {
         </div>
 
         <div className="text-center mt-6">
-          <a href="/" className="text-sm text-[#6B5B55] hover:text-rose-gold transition-colors">
+          <Link to="/" className="text-sm text-[#6B5B55] hover:text-rose-gold transition-colors">
             ← Back to store
-          </a>
+          </Link>
         </div>
       </motion.div>
     </div>

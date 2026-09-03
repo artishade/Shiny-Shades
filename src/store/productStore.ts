@@ -50,7 +50,6 @@ export interface ProductError {
 
 // ─── Row → Domain ─────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowToProduct(item: any): Product {
   return {
     id: item.id,

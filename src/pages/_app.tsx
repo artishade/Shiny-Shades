@@ -63,7 +63,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             Oops! Something went wrong
           </h1>
           <p style={{ fontSize: '1.1rem', color: '#6B5B55', marginBottom: '2rem' }}>
-            We're sorry for the inconvenience. Please refresh the page or try again later.
+            We&apos;re sorry for the inconvenience. Please refresh the page or try again later.
           </p>
           <button
             type="button"

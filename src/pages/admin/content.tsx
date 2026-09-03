@@ -181,7 +181,7 @@ const MediaDropzone: React.FC<{
         </p>
         {!isVideo && (
           <p className="text-[10px] text-[#6B5B55]/70 flex items-center gap-1">
-            <Crop size={10} /> You'll be able to adjust the crop before upload
+            <Crop size={10} /> You&apos;ll be able to adjust the crop before upload
           </p>
         )}
         <input
@@ -864,7 +864,7 @@ export const AdminContent: React.FC = () => {
               <span className="text-xs font-normal text-[#6B5B55]/70">— optional</span>
             </label>
             <p className="text-xs text-[#6B5B55]/70 mb-2">
-              1440 × 810px widescreen crop for phones, so the subject isn't cropped awkwardly.
+              1440 × 810px widescreen crop for phones, so the subject isn&apos;t cropped awkwardly.
               If left empty, the desktop image is reused (and repositioned to reduce cropping,
               but a dedicated upload looks much better).
             </p>

@@ -28,7 +28,6 @@ const getServerSupabase = () => {
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   if (!url || !key) return null;
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createClient } = require('@supabase/supabase-js');
   return createClient(url, key, { auth: { persistSession: false } });
 };
@@ -312,7 +311,7 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
               Category Not Found
             </h1>
             <p className="text-[#6B5B55] mb-6">
-              This category doesn't exist or has been removed.
+              This category doesn&apos;t exist or has been removed.
             </p>
             {/*
               Link with Button child causes a11y issues (nested interactives).

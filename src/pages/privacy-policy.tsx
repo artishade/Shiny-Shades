@@ -33,7 +33,7 @@ export const PrivacyPolicyPage: React.FC = () => {
 
             <section>
               <p>
-                {BRAND.fullName} ("we", "us", or "our") respects your privacy and is
+                {BRAND.fullName} (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) respects your privacy and is
                 committed to protecting the personal information you share with us.
                 This Privacy Policy explains what information we collect, how we use
                 it, and the choices you have.

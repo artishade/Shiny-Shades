@@ -168,7 +168,7 @@ export const AboutUsPage: React.FC = () => {
             <div className="space-y-4 text-[#6B5B55] leading-relaxed">
               <p>
                 {BRAND.fullName} started in Dhaka with one question: why was it so hard to find
-                women's fashion that was both genuinely beautiful <em>and</em> honestly priced?
+                women&apos;s fashion that was both genuinely beautiful <em>and</em> honestly priced?
                 Every shop either compromised on quality or charged far more than fair.
               </p>
               <p>
@@ -207,7 +207,7 @@ export const AboutUsPage: React.FC = () => {
 
                 {/* Quote */}
                 <blockquote className="relative z-10 text-center">
-                  <span className="text-6xl text-rose-gold font-serif leading-none select-none">"</span>
+                  <span className="text-6xl text-rose-gold font-serif leading-none select-none">&quot;</span>
                   <p className="heading-serif text-xl md:text-2xl text-charcoal font-semibold leading-snug mt-2 mb-4">
                     {BRAND.tagline}
                   </p>
@@ -321,8 +321,8 @@ export const AboutUsPage: React.FC = () => {
               Our Promise to You
             </h2>
             <p className="text-white/90 text-base md:text-lg max-w-xl mx-auto leading-relaxed mb-8">
-              If you're ever unhappy with your order for any reason, reach out to us and
-              we will make it right. That's our word — not just a policy.
+              If you&apos;re ever unhappy with your order for any reason, reach out to us and
+              we will make it right. That&apos;s our word — not just a policy.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/shop">

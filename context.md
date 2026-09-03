@@ -2,7 +2,7 @@
 
 ## Overview
 
-Shiny Shades is an e-commerce storefront for a Bangladesh-based women's fashion boutique, selling western dresses, traditional wear, jewelry, and cosmetics with BDT pricing, bKash/Nagad/SSLCommerz/Stripe/COD payments, and a Supabase-backed admin panel. The codebase is a recent Next.js 15 (Pages Router, Turbopack) port of an earlier Vite + react-router-dom SPA; the conversion is functionally complete and the app runs as a Vercel-hosted Next.js project with a Supabase backend.
+Shiny Shades is an e-commerce storefront for a Bangladesh-based women's fashion boutique, selling western dresses, traditional wear, jewelry, and cosmetics with BDT pricing, bKash/Nagad/SSLCommerz/COD payments, and a Supabase-backed admin panel. The codebase is a recent Next.js 15 (Pages Router, Turbopack) port of an earlier Vite + react-router-dom SPA; the conversion is functionally complete and the app runs as a Vercel-hosted Next.js project with a Supabase backend.
 
 ## Tech Stack
 
@@ -12,7 +12,6 @@ Shiny Shades is an e-commerce storefront for a Bangladesh-based women's fashion 
 - **Backend / DB**: Supabase (Postgres + Auth + RLS + RPC). Service-role key is server-only; anon key is public. Schema lives in `supabase/schema.sql`; incremental migrations in `supabase/migrations/`.
 - **Media**: Cloudinary (client-side uploads via signed upload preset, browser-side compression via `browser-image-compression`).
 - **Payments**:
-  - Stripe (`stripe` SDK) — Checkout Sessions + webhook for server-side verification.
   - SSLCommerz — direct REST (no SDK), bKash/Nagad flows. Init endpoint + callback endpoint.
   - bKash/Nagad manual send-money flow with placeholder merchant number.
   - Cash on Delivery (COD).
@@ -31,13 +30,11 @@ src/
 │   ├── shop.tsx, search.tsx, categories.tsx
 │   ├── product/[slug].tsx        # PDP
 │   ├── category/[slug].tsx       # PLP
-│   ├── cart.tsx, checkout.tsx    # Cart + checkout (COD/bKash/Nagad/SSLCommerz/Stripe)
+│   ├── cart.tsx, checkout.tsx    # Cart + checkout (COD/bKash/Nagad/SSLCommerz)
 │   ├── payment/{success,cancel}.tsx
 │   ├── about.tsx, contact.tsx, terms.tsx, privacy-policy.tsx, return-policy.tsx, 404.tsx
 │   ├── admin/                    # Admin panel: dashboard, products, categories, orders, customers, coupons, inventory, reports, content, login (index.tsx)
 │   └── api/                      # Vercel serverless functions
-│       ├── create-stripe-session.js, create-payment-intent.js
-│       ├── stripe-webhook.js
 │       ├── sslcommerz-init.js, sslcommerz-callback.js
 │       ├── log-order.js          # Forwards order payload to Google Sheets webhook
 │       └── _lib/rateLimit.js     # Shared Supabase-backed rate-limit RPC
@@ -90,9 +87,9 @@ public/                   # Favicons, manifest, robots.txt, generated sitemap.xm
 **Checkout / payments flow:**
 1. `checkout.tsx` builds order payload and calls `supabase.from('orders').insert(...)` with `payment_status: 'pending'`.
 2. Client also calls `POST /api/log-order` which forwards the order to `GOOGLE_SHEET_URL` if configured (never breaks checkout on failure).
-3. For online payments, client then calls either `POST /api/create-stripe-session` (gets Checkout URL) or `POST /api/sslcommerz-init` (gets GatewayPageURL).
+3. For online payments, client then calls `POST /api/sslcommerz-init` (gets GatewayPageURL).
 4. After payment, customer is redirected to `/payment/success` or `/payment/cancel` (UI-only — never trusted as proof of payment).
-5. **Trustworthy signal**: Stripe webhook at `POST /api/stripe-webhook` verifies signature with `STRIPE_WEBHOOK_SECRET` and updates Supabase; SSLCommerz hits `POST /api/sslcommerz-callback` for the same purpose.
+5. **Trustworthy signal**: SSLCommerz hits `POST /api/sslcommerz-callback` server-to-server and that is what updates Supabase.
 
 **Build-time flow:**
 `npm run build` → `scripts/generate-sitemap.mjs` (uses `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` to fetch active products/categories) → writes `public/sitemap.xml` → `next build` runs.
@@ -104,9 +101,9 @@ public/                   # Favicons, manifest, robots.txt, generated sitemap.xm
 - **State**: Zustand everywhere. Persisted vs Supabase-backed split is strict and documented at the top of `store/index.ts`. `mockData.ts` is only used as fallback for `adminDataStore` coupons.
 - **Env vars**: `NEXT_PUBLIC_*` is inlined into the browser bundle (same role as old `VITE_*`); everything else is server-only. See `.env.example` for the canonical list.
 - **Brand / theme**: `src/config/brandingConfig.ts` is THE single source of truth for store name, logo, theme colors, order prefix, watermark text, OG image. Theme is set via `ACTIVE_THEME` constant — colors are injected as CSS custom properties on `<html>` and consumed by Tailwind utility classes (e.g. `text-rose-gold`, `bg-blush-light`).
-- **Currency**: BDT (`৳`), symbol/code in `SITE.currency`. All prices in taka; Stripe currently defaults to `usd` in checkout sessions (see Known Issues).
-- **Code style**: TypeScript strict, no comments unless explaining "why" (the existing codebase has heavy doc-comments at the top of each major file — that's the established pattern). ESLint via `next lint`.
-- **API routes**: Plain `.js` (not `.ts`) — Vercel serverless convention, uses `(req, res)` handler. Returns `res.status(...).json(...)`. `stripe-webhook.js` disables body parsing with `export const config = { api: { bodyParser: false } }` to preserve the raw body for signature verification.
+- **Currency**: BDT (`৳`), symbol/code in `SITE.currency`. All prices in taka; SSLCommerz is initialised with `currency: 'BDT'`.
+- **Code style**: TypeScript strict, no comments unless explaining "why" (the existing codebase has heavy doc-comments at the top of each major file — that's the established pattern). ESLint 9 flat config in `eslint.config.mjs`, run via `npm run lint` (`eslint .`).
+- **API routes**: Plain `.js` (not `.ts`) — Vercel serverless convention, uses `(req, res)` handler. Returns `res.status(...).json(...)`.
 - **SEO**: Per-page via `<SEO>` component or inline `next/head`. `CustomerLayout`'s `DefaultSEO` provides site-wide defaults (title, description, canonical, OG, Twitter, Organization/WebSite JSON-LD). `_document.tsx` holds only truly global tags (favicons, GTM, FB Pixel init, preconnects).
 - **Tracking events**: Emitted via `trackXxx` helpers in `src/lib/facebookPixel.ts` and via `window.dataLayer.push({ event: '...', ecommerce: {...} })` for GTM. Page-view tracking is in `_app.tsx`'s `PixelTracker` (skips `/admin/*`).
 - **Images**: Plain `<img>` tags pointed at Cloudinary (no `next/image`), with helpers `getOptimizedImageUrl` / `getResponsiveSrcSet` in `src/lib/cloudinary.ts`.
@@ -124,17 +121,16 @@ npm start                    # next start (production)
 
 **Required env vars** (see `.env.example` for full list):
 - Client: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`, `NEXT_PUBLIC_FB_PIXEL_ID`, `NEXT_PUBLIC_GTM_ID`.
-- Server only: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD`, `SSLCOMMERZ_IS_SANDBOX`, `PUBLIC_SITE_URL`, `GOOGLE_SHEET_URL` (optional).
+- Server only: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SSLCOMMERZ_STORE_ID`, `SSLCOMMERZ_STORE_PASSWORD`, `SSLCOMMERZ_IS_SANDBOX`, `PUBLIC_SITE_URL`, `GOOGLE_SHEET_URL` (optional).
 
 **Supabase setup**: Run `supabase/schema.sql` in Supabase SQL Editor (creates tables, RLS, `is_admin()` function, views, seed data). Apply `supabase/migrations/*.sql` for incremental additions. Create admin users via Supabase Auth and add matching emails to the `admins` table.
 
-**Deploy**: Push to a Vercel project with the env vars set in Project Settings. `vercel.json` already configures framework + security headers + immutable caching for `/_next/static/*`. After deploy, register Stripe webhook at `https://<domain>/api/stripe-webhook` and copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+**Deploy**: Push to a Vercel project with the env vars set in Project Settings. `vercel.json` already configures framework + security headers + immutable caching for `/_next/static/*`. After deploy, point the SSLCommerz store's callback URLs at `https://<domain>/api/sslcommerz-callback`.
 
 ## Known Issues / TODOs
 
 - **`checkout.tsx:46`** — `MOBILE_BANKING_MERCHANT_NUMBER = '01700000000'` is a placeholder; TODO says to replace with real bKash/Nagad merchant numbers. bKash/Nagad flows currently send customers to send money manually with this fake number.
 - **`adminDataStore.ts`** — Coupons are persisted in localStorage via `persist` (using mock data as seed), even though the `coupons` table exists in Supabase and `useCouponStore` reads from it. There are two parallel coupon implementations (`useCouponStore` from `couponStore.ts` and `useAdminDataStore.coupons`); cart's `applyCoupon` uses `useCouponStore`. The admin Coupons page wires `useAdminDataStore` (see `CouponsInventoryReportsShared.tsx`), so admin-edited coupons in localStorage don't necessarily reach the cart's coupon source of truth.
-- **`create-stripe-session.js`** — `currency` defaults to `'usd'` and isn't tied to `SITE.currency.code` (BDT). Stripe may not support BDT natively; needs verification/payment-method configuration.
 - **`README_PROGRESS.md`** — Author's note: conversion has been syntax-checked but not run through a real `next build` in the migration environment. First local `npm install && npm run build` may surface missing deps or type errors.
 - **`mockData.ts`** — Still referenced by `adminDataStore` for coupons. If you wire coupons fully to Supabase, this file's role can be reduced.
 - **RTL/bilingual** — Bengali strings are present in checkout validation, bKash/Nagad labels, thana names. Most UI is English-only; full i18n isn't implemented.

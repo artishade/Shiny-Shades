@@ -207,7 +207,6 @@ function renderOrder(
         didDrawPage: () => { /* page break handled outside */ },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = (doc as any).lastAutoTable.finalY + 5;
 
     // ── Totals block ─────────────────────────────────────────────────────────────

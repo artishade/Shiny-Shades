@@ -92,7 +92,7 @@ export const PaymentSuccessPage: React.FC = () => {
               Confirming your payment…
             </h1>
             <p className="text-[#6B5B55] text-sm">
-              Please don't close this page. This usually takes a few seconds.
+              Please don&apos;t close this page. This usually takes a few seconds.
             </p>
           </>
         )}
@@ -125,12 +125,12 @@ export const PaymentSuccessPage: React.FC = () => {
               Payment Processing
             </h1>
             <p className="text-[#6B5B55] text-sm mb-2">
-              We're still confirming your payment with the bank. This can take
+              We&apos;re still confirming your payment with the bank. This can take
               a little longer for some transactions.
             </p>
             {orderNumber && (
               <p className="text-sm text-[#6B5B55] mb-8">
-                Order number: <strong className="text-charcoal">{orderNumber}</strong> — we'll
+                Order number: <strong className="text-charcoal">{orderNumber}</strong> — we&apos;ll
                 update your order automatically once confirmed.
               </p>
             )}

@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       currency: 'BDT',
       tran_id: orderNumber, // unique transaction id — we reuse the order number
       // SSLCommerz calls these directly, server-to-server, when payment finishes —
-      // this is the trustworthy confirmation, same role as the Stripe webhook.
+      // this is the trustworthy confirmation, not the browser redirect.
       success_url: `${siteUrl}/api/sslcommerz-callback?status=success`,
       fail_url: `${siteUrl}/api/sslcommerz-callback?status=fail`,
       cancel_url: `${siteUrl}/api/sslcommerz-callback?status=cancel`,

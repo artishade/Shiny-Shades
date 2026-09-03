@@ -40,3 +40,5 @@ export const FullScreenLoader = memo(() => {
         </AnimatePresence>
     );
 });
+
+FullScreenLoader.displayName = 'FullScreenLoader';

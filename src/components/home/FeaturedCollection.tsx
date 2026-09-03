@@ -28,7 +28,7 @@ export const FeaturedCollection: React.FC = () => {
 
                 {featured.length === 0 ? (
                     <div className="text-center py-8 text-warm-gray">
-                        <p>No featured products yet. Mark products as "Featured" in the admin panel.</p>
+                        <p>No featured products yet. Mark products as &quot;Featured&quot; in the admin panel.</p>
                     </div>
                 ) : (
                     <FadeIn delay={0.15}>

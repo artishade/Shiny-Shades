@@ -50,8 +50,8 @@ export const ReturnPolicyPage: React.FC = () => {
               Returns & Exchanges
             </h1>
             <p className="text-[#6B5B55] max-w-xl mx-auto leading-relaxed">
-              We want you to love what you ordered. If something isn't quite
-              right, here's how returns and exchanges work.
+              We want you to love what you ordered. If something isn&apos;t quite
+              right, here&apos;s how returns and exchanges work.
             </p>
           </div>
         </FadeIn>
@@ -112,7 +112,7 @@ export const ReturnPolicyPage: React.FC = () => {
                 <li>Share your order number and the reason for the return or exchange</li>
                 <li>Our team will confirm eligibility and share the next steps</li>
                 <li>Pack the item securely with all original tags and packaging</li>
-                <li>Once we receive and inspect the item, we'll process your exchange or refund</li>
+                <li>Once we receive and inspect the item, we&apos;ll process your exchange or refund</li>
               </ol>
             </section>
 
@@ -135,7 +135,7 @@ export const ReturnPolicyPage: React.FC = () => {
               <p>
                 If you receive a damaged, defective, or incorrect item, please
                 contact us within 48 hours of delivery with photos of the product.
-                We'll arrange a free replacement or full refund — no questions asked.
+                We&apos;ll arrange a free replacement or full refund — no questions asked.
               </p>
             </section>
 

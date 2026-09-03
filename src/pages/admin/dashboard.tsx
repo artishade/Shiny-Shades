@@ -59,7 +59,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="heading-serif text-2xl md:text-3xl font-bold text-charcoal">Dashboard</h1>
-        <p className="text-[#6B5B55] mt-1">Welcome back! Here's your store overview.</p>
+        <p className="text-[#6B5B55] mt-1">Welcome back! Here&apos;s your store overview.</p>
       </div>
 
       {/* Stats Grid — all from real data */}
@@ -203,7 +203,7 @@ export const AdminDashboard: React.FC = () => {
               <ShoppingBag size={36} className="mx-auto text-blush mb-3" />
               <p className="text-charcoal font-medium">No orders yet</p>
               <p className="text-[#6B5B55] text-sm mt-1">
-                When customers place orders, they'll appear here
+                When customers place orders, they&apos;ll appear here
               </p>
             </div>
           ) : (

@@ -54,7 +54,7 @@ export const ContactUsPage: React.FC = () => {
             </h1>
             <p className="text-[#6B5B55] max-w-xl mx-auto leading-relaxed">
               Have a question about an order, a product, or anything else?
-              We'd love to hear from you.
+              We&apos;d love to hear from you.
             </p>
           </div>
         </FadeIn>
@@ -128,7 +128,7 @@ export const ContactUsPage: React.FC = () => {
                     Thank you!
                   </h3>
                   <p className="text-[#6B5B55] text-sm mb-6">
-                    Your message is on its way. We'll get back to you soon.
+                    Your message is on its way. We&apos;ll get back to you soon.
                   </p>
                   <Button variant="outline" onClick={() => setSubmitted(false)}>
                     Send Another Message

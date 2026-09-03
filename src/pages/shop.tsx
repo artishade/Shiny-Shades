@@ -350,7 +350,7 @@ export const ShopPage: React.FC = () => {
   return (
     <>
       <Head>
-        <title>Shop All | Shiny Shades — Premium Women's Fashion Bangladesh</title>
+        <title>Shop All | Shiny Shades — Premium Women&apos;s Fashion Bangladesh</title>
         <meta name="description" content="Browse Shiny Shades's full collection of premium women's fashion including lingerie, dresses, and more. Free delivery across Bangladesh." />
         <link rel="canonical" href="https://www.shinyshades.store/shop" />
       </Head>

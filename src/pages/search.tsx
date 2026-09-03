@@ -306,7 +306,7 @@ export const SearchPage: React.FC = () => {
                 {/* Nothing to show */}
                 {inputValue.trim() && suggestions.length === 0 && (
                   <div className="px-4 py-3 text-sm text-[#6B5B55]">
-                    Press Enter to search for "{inputValue.trim()}"
+                    Press Enter to search for &quot;{inputValue.trim()}&quot;
                   </div>
                 )}
               </div>
@@ -318,7 +318,7 @@ export const SearchPage: React.FC = () => {
           {query && (
             <div>
               <h2 className="heading-serif text-2xl font-bold text-charcoal mb-2">
-                {results.length} {results.length === 1 ? 'result' : 'results'} for "{query}"
+                {results.length} {results.length === 1 ? 'result' : 'results'} for &quot;{query}&quot;
               </h2>
               <div className="luxury-line mb-8 w-16" />
 
