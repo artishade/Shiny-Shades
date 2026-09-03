@@ -1,29 +1,7 @@
 {
-  "id": "/",
-  "name": "Shiny Shades — Premium Women's Fashion",
-  "short_name": "Shiny Shades",
-  "description": "Luxury feminine fashion crafted for the modern woman. Fast delivery across Bangladesh.",
-  "lang": "en-BD",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#FAF8F3",
-  "background_color": "#FAF8F3",
-  "categories": ["shopping", "lifestyle"],
+  "name": "MyWebSite",
+  "short_name": "MySite",
   "icons": [
-    {
-      "src": "/web-app-manifest-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/web-app-manifest-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
     {
       "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
@@ -36,5 +14,8 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "display": "standalone"
 }

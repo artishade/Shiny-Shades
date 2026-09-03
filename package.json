@@ -7,7 +7,6 @@
     "build:sitemap": "node scripts/generate-sitemap.mjs",
     "build": "npm run build:sitemap && next build",
     "start": "next start",
-    "test": "node scripts/test-cloudinary.mjs",
     "lint": "eslint ."
   },
   "dependencies": {

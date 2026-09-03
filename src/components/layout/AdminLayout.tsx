@@ -11,7 +11,6 @@ import {
   FileText, Ticket, BarChart3, AlertTriangle, LogOut, Menu
 } from 'lucide-react';
 import { useAdminAuthStore } from '@/store';
-import { signOut } from '@/lib/supabase';
 import { BRAND } from '@/config/brandingConfig';
 
 const sidebarItems = [
@@ -32,10 +31,7 @@ export const AdminLayout: React.FC<{ children: ReactNode }> = ({ children }) => 
   const navigate = useNavigate();
   const { admin, logout } = useAdminAuthStore();
 
-  const handleLogout = async () => {
-    // Clearing the store alone left the Supabase session alive, so the next
-    // /admin/dashboard visit re-authenticated straight away.
-    await signOut().catch((err) => console.error('Sign-out failed', err));
+  const handleLogout = () => {
     logout();
     navigate('/admin');
   };

@@ -353,63 +353,74 @@ export const HomePage: React.FC = () => {
       {/* ── SEO HEAD ──────────────────────────────────────────────────────── */}
       <Head>
         {/* ── Primary meta ──────────────────────────────────────────────── */}
-        {/* Keys match <DefaultSEO> in CustomerLayout so these replace the
-            site-wide tags rather than stacking beside them. */}
         <title>{pageTitle}</title>
-        <meta name="description" content={pageDescription} key="description" />
-        <meta name="keywords" content={pageKeywords} key="keywords" />
+        <meta name="description" content={pageDescription} />
+        <meta name="keywords" content={pageKeywords} />
         <meta
           name="robots"
           content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
-          key="robots"
         />
+        <meta name="googlebot" content="index, follow, max-image-preview:large" />
+
+        {/*
+          theme-color: used by Chrome / Edge on Android to colour the
+          browser chrome, improving perceived brand quality.
+        */}
+        <meta name="theme-color" content={BRAND.colors.primary} />
 
         {/* ── Canonical ─────────────────────────────────────────────────── */}
-        <link rel="canonical" href={CANONICAL} key="canonical" />
+        <link rel="canonical" href={CANONICAL} />
+
+        {/*
+          Preconnect to Cloudinary CDN.
+          Established before the browser parses any <img src="…cloudinary…">
+          tags, reducing TCP + TLS handshake latency for hero and product
+          images — measurable LCP / FCP improvement on mobile.
+        */}
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
 
         {/* ── Open Graph ────────────────────────────────────────────────── */}
-        <meta property="og:type" content="website" key="og:type" />
-        <meta property="og:site_name" content={BRAND.fullName} key="og:site_name" />
-        <meta property="og:title" content={pageTitle} key="og:title" />
-        <meta property="og:description" content={pageDescription} key="og:description" />
-        <meta property="og:url" content={CANONICAL} key="og:url" />
-        <meta property="og:image" content={OG_IMAGE} key="og:image" />
-        <meta property="og:image:secure_url" content={OG_IMAGE} key="og:image:secure_url" />
-        <meta property="og:image:type" content="image/jpeg" key="og:image:type" />
-        <meta property="og:image:width" content="1200" key="og:image:width" />
-        <meta property="og:image:height" content="630" key="og:image:height" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content={BRAND.fullName} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:url" content={CANONICAL} />
+        <meta property="og:image" content={OG_IMAGE} />
+        <meta property="og:image:secure_url" content={OG_IMAGE} />
+        <meta property="og:image:type" content="image/jpeg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta
           property="og:image:alt"
           content={`${BRAND.fullName} — Premium Women's Fashion in Bangladesh`}
-          key="og:image:alt"
         />
-        <meta property="og:locale" content="en_BD" key="og:locale" />
-        <meta property="og:locale:alternate" content="bn_BD" key="og:locale:alternate" />
+        <meta property="og:locale" content="en_BD" />
+        <meta property="og:locale:alternate" content="bn_BD" />
 
         {/* ── Twitter Card ──────────────────────────────────────────────── */}
-        <meta name="twitter:card" content="summary_large_image" key="twitter:card" />
-        <meta name="twitter:title" content={pageTitle} key="twitter:title" />
-        <meta name="twitter:description" content={pageDescription} key="twitter:description" />
-        <meta name="twitter:image" content={OG_IMAGE} key="twitter:image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={OG_IMAGE} />
         <meta
           name="twitter:image:alt"
           content={`${BRAND.fullName} — Premium Women's Fashion in Bangladesh`}
-          key="twitter:image:alt"
         />
 
         {/* ── JSON-LD structured data ────────────────────────────────────── */}
 
         {/* Organization — enables Knowledge Panel in Google Search */}
-        <script type="application/ld+json" key="jsonld-organization">{ORG_SCHEMA_STR}</script>
+        <script type="application/ld+json">{ORG_SCHEMA_STR}</script>
 
         {/* WebSite — enables Sitelinks Search Box */}
-        <script type="application/ld+json" key="jsonld-website">{WEBSITE_SCHEMA_STR}</script>
+        <script type="application/ld+json">{WEBSITE_SCHEMA_STR}</script>
 
         {/* WebPage — page-level entity */}
-        <script type="application/ld+json" key="jsonld-webpage">{WEBPAGE_SCHEMA_STR}</script>
+        <script type="application/ld+json">{WEBPAGE_SCHEMA_STR}</script>
 
         {/* LocalBusiness / OnlineStore — rich result eligibility */}
-        <script type="application/ld+json" key="jsonld-business">{BUSINESS_SCHEMA_STR}</script>
+        <script type="application/ld+json">{BUSINESS_SCHEMA_STR}</script>
       </Head>
 
       {/*
@@ -436,12 +447,14 @@ export const HomePage: React.FC = () => {
           5. CategoryShowcase
           6. RecentlyViewedProducts — personalised; lazy-loaded images only
       */}
-      <Hero />
-      <BannerSlider />
-      <TrendingProducts />
-      <FeaturedCollection />
-      <CategoryShowcase />
-      <RecentlyViewedProducts />
+      <main id="main-content">
+        <Hero />
+        <BannerSlider />
+        <TrendingProducts />
+        <FeaturedCollection />
+        <CategoryShowcase />
+        <RecentlyViewedProducts />
+      </main>
     </>
   );
 };

@@ -13,7 +13,7 @@ declare global {
 
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from '@/lib/routerCompat';
+import { useNavigate, useLocation } from '@/lib/routerCompat';
 import Head from 'next/head';
 import type { GetServerSideProps } from 'next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -39,13 +39,20 @@ import {
 } from 'lucide-react';
 import { useCartStore, useOrderStore, useCouponStore } from '@/store';
 import { sendOrderToGoogleSheets } from '@/lib/supabase';
-import type { PaymentMethod } from '@/types';
+import type { PaymentMethod, Product } from '@/types';
 import { trackInitiateCheckout, trackPurchase, trackPageView } from '@/lib/facebookPixel';
 import { SITE } from '@/config/siteConfig';
 import { BRAND } from '@/config/brandingConfig';
 
 // TODO: বাস্তব বিকাশ/নগদ মার্চেন্ট নম্বর দিয়ে replace করুন
 const MOBILE_BANKING_MERCHANT_NUMBER = '01700000000';
+
+interface BuyNowState {
+  product: Product;
+  size: string;
+  color: string;
+  quantity: number;
+}
 
 /* ─── ১. ঢাকা মেট্রোপলিটন থানা (ঢাকার ভেতরের এলাকা - চার্জ ৳৮০) ─── */
 const DHAKA_METRO_THANAS = [
@@ -216,6 +223,7 @@ const Field: React.FC<{
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { items, getSubtotal, getDiscount, clearCart } = useCartStore();
   const { coupons, loadCoupons } = useCouponStore();
   const { placeOrder } = useOrderStore();
@@ -225,7 +233,26 @@ export const CheckoutPage: React.FC = () => {
     trackPageView();
   }, [loadCoupons]);
 
-  const subtotal = getSubtotal();
+  const buyNow = location.state as BuyNowState | null;
+
+  const checkoutItems = useMemo(() => {
+    if (buyNow?.product) {
+      return [
+        {
+          product: buyNow.product,
+          selectedSize: buyNow.size,
+          selectedColor: buyNow.color,
+          quantity: buyNow.quantity,
+        },
+      ];
+    }
+    return items;
+  }, [buyNow, items]);
+
+  const subtotal = useMemo(() => {
+    if (buyNow?.product) return buyNow.product.price * buyNow.quantity;
+    return getSubtotal();
+  }, [buyNow, getSubtotal]);
 
   // Form State
   const [form, setForm] = useState({
@@ -257,11 +284,6 @@ export const CheckoutPage: React.FC = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const [placing, setPlacing] = useState(false);
 
-  // Redirecting from the render body double-fires under React 19 strict mode.
-  useEffect(() => {
-    if (items.length === 0 && !orderPlaced) navigate('/cart');
-  }, [items.length, orderPlaced, navigate]);
-
   // Refs for validation auto-scroll
   const nameRef = useRef<HTMLDivElement>(null);
   const phoneRef = useRef<HTMLDivElement>(null);
@@ -290,7 +312,7 @@ export const CheckoutPage: React.FC = () => {
   const shippingCharge = isInsideDhaka ? 80 : 150;
   const deliveryZoneLabel = isInsideDhaka ? 'Inside Dhaka (ঢাকার ভেতরে)' : 'Outside Dhaka (ঢাকার বাইরে)';
 
-  const discount = cartCouponOverridden ? 0 : getDiscount();
+  const discount = buyNow ? 0 : cartCouponOverridden ? 0 : getDiscount();
   const total = Math.max(0, subtotal - discount - couponDiscount + shippingCharge);
 
   const updateForm = (field: keyof typeof form, value: string) => {
@@ -435,7 +457,7 @@ export const CheckoutPage: React.FC = () => {
         ecommerce: {
           currency: SITE.currency.code,
           value: total,
-          items: items.map((item) => ({
+          items: checkoutItems.map((item) => ({
             item_id: item.product.id,
             item_name: item.product.name,
             item_category: item.product.category,
@@ -493,7 +515,7 @@ export const CheckoutPage: React.FC = () => {
         country: 'Bangladesh',
         district: deliveryZoneLabel,
       },
-      items: items.map((item) => ({
+      items: checkoutItems.map((item) => ({
         productId: item.product.id,
         productName: item.product.name,
         productImage: item.product.images?.[0] || '',
@@ -518,7 +540,7 @@ export const CheckoutPage: React.FC = () => {
           value: total,
           shipping: shippingCharge,
           coupon: couponApplied ? couponInput.trim().toUpperCase() : undefined,
-          items: items.map((item) => ({
+          items: checkoutItems.map((item) => ({
             item_id: item.product.id,
             item_name: item.product.name,
             item_category: item.product.category,
@@ -537,7 +559,7 @@ export const CheckoutPage: React.FC = () => {
       setOrderNumber(num);
       setOrderPlaced(true);
       setShowReview(false);
-      clearCart();
+      if (!buyNow) clearCart();
     } catch (err) {
       console.error('Order failed', err);
       alert('অর্ডার সম্পন্ন হতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
@@ -546,7 +568,10 @@ export const CheckoutPage: React.FC = () => {
     }
   };
 
-  if (items.length === 0 && !orderPlaced) return null;
+  if (checkoutItems.length === 0 && !orderPlaced) {
+    navigate('/cart');
+    return null;
+  }
 
   /* ── ORDER SUCCESS VIEW ── */
   if (orderPlaced) {
@@ -637,12 +662,12 @@ export const CheckoutPage: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-[#B07D6B] flex items-center gap-1.5">
-                <Package size={14} /> আপনার অর্ডার ({items.length} টি আইটেম)
+                <Package size={14} /> আপনার অর্ডার ({checkoutItems.length} টি আইটেম)
               </span>
             </div>
 
             <div className="space-y-2">
-              {items.map((item) => (
+              {checkoutItems.map((item) => (
                 <div
                   key={`${item.product.id}-${item.selectedSize}`}
                   className="flex items-center gap-3 p-3 rounded-2xl bg-[#FAF6F3] border border-gray-100"
@@ -1148,7 +1173,7 @@ export const CheckoutPage: React.FC = () => {
 
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">আইটেম লিস্ট:</p>
-                  {items.map((item) => (
+                  {checkoutItems.map((item) => (
                     <div key={item.product.id} className="flex justify-between items-center text-xs">
                       <span className="text-gray-800 truncate pr-2 font-medium">
                         {item.product.name} × {item.quantity}

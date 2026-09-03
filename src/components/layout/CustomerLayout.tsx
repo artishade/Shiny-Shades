@@ -16,6 +16,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
 import { useContentStore } from '@/store/contentStore';
+import { useLoadingStore } from '@/store/useLoadingStore';
 
 // ─── Canonical origin (strip trailing slash once) ────────────────────────────
 
@@ -58,8 +59,6 @@ const WEBSITE_JSON_LD = JSON.stringify({
 // A page-level <SEO> component (src/components/SEO.tsx) rendered further down
 // the tree overrides these tags — next/head merges/de-dupes multiple <Head>
 // instances the same way react-helmet-async merged multiple <Helmet>s.
-// Route-independent tags (favicons, manifest, theme-color, verification) are
-// emitted once in _document.tsx and deliberately not repeated here.
 
 const DefaultSEO = memo(() => {
   const { pathname } = useLocation();
@@ -78,43 +77,51 @@ const DefaultSEO = memo(() => {
   return (
     <Head>
       {/* ── Primary meta ─────────────────────────────────────────── */}
-      {/* Keys must match src/components/SEO.tsx so page-level tags replace
-          these instead of stacking — next/head de-dupes by key only. */}
       <title>{title}</title>
-      <meta name="description" content={description} key="description" />
-      <meta name="keywords" content={keywords} key="keywords" />
-      <meta
-        name="robots"
-        content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
-        key="robots"
-      />
+      <meta name="description" content={description} />
+      <meta name="keywords" content={keywords} />
+      <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+      <meta name="theme-color" content={BRAND.colors.primary} />
 
       {/* ── Canonical ─────────────────────────────────────────────── */}
-      <link rel="canonical" href={canonical} key="canonical" />
+      <link rel="canonical" href={canonical} />
+
+      {/* ── Favicons ──────────────────────────────────────────────── */}
+      <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+      <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+      <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+      <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+      <link rel="manifest" href="/site.webmanifest" />
 
       {/* ── Open Graph ────────────────────────────────────────────── */}
-      <meta property="og:type" content="website" key="og:type" />
-      <meta property="og:site_name" content={siteName} key="og:site_name" />
-      <meta property="og:title" content={title} key="og:title" />
-      <meta property="og:description" content={description} key="og:description" />
-      <meta property="og:image" content={ogImageAbsolute} key="og:image" />
-      <meta property="og:image:width" content="1200" key="og:image:width" />
-      <meta property="og:image:height" content="630" key="og:image:height" />
-      <meta property="og:image:alt" content={`${siteName} — ${title}`} key="og:image:alt" />
-      <meta property="og:url" content={canonical} key="og:url" />
-      <meta property="og:locale" content="en_BD" key="og:locale" />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content={siteName} />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:image" content={ogImageAbsolute} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content={`${siteName} — ${title}`} />
+      <meta property="og:url" content={canonical} />
+      <meta property="og:locale" content="en_BD" />
 
       {/* ── Twitter Card ──────────────────────────────────────────── */}
-      <meta name="twitter:card" content="summary_large_image" key="twitter:card" />
-      {twitterHandle && <meta name="twitter:site" content={twitterHandle} key="twitter:site" />}
-      <meta name="twitter:title" content={title} key="twitter:title" />
-      <meta name="twitter:description" content={description} key="twitter:description" />
-      <meta name="twitter:image" content={ogImageAbsolute} key="twitter:image" />
-      <meta name="twitter:image:alt" content={`${siteName} — ${title}`} key="twitter:image:alt" />
+      <meta name="twitter:card" content="summary_large_image" />
+      {twitterHandle && <meta name="twitter:site" content={twitterHandle} />}
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={ogImageAbsolute} />
+      <meta name="twitter:image:alt" content={`${siteName} — ${title}`} />
+
+      {/* ── Verification tags ─────────────────────────────────────── */}
+      {settings.googleSearchConsoleVerification && (
+        <meta name="google-site-verification" content={settings.googleSearchConsoleVerification} />
+      )}
+      {settings.bingVerification && <meta name="msvalidate.01" content={settings.bingVerification} />}
 
       {/* ── Structured data ───────────────────────────────────────── */}
-      <script type="application/ld+json" key="jsonld-organization">{ORG_JSON_LD}</script>
-      <script type="application/ld+json" key="jsonld-website">{WEBSITE_JSON_LD}</script>
+      <script type="application/ld+json">{ORG_JSON_LD}</script>
+      <script type="application/ld+json">{WEBSITE_JSON_LD}</script>
     </Head>
   );
 });
@@ -124,9 +131,13 @@ DefaultSEO.displayName = 'DefaultSEO';
 
 export const CustomerLayout = memo(({ children }: { children: ReactNode }) => {
   const announcement = useContentStore((s) => s.content.announcement);
+  const isLoading = useLoadingStore((s) => s.isLoading);
 
   const barVisible =
     announcement?.enabled && announcement?.messages?.some((m: string) => m?.trim());
+
+  // Avoid rendering shell before loading finishes — prevents CLS
+  if (isLoading) return <>{children}</>;
 
   return (
     <>

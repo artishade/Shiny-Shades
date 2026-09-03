@@ -55,6 +55,15 @@ export async function fetchProductBySlug(slug: string) {
 }
 
 // ===== Order Helpers =====
+export async function createOrder(orderData: Record<string, unknown>) {
+  const { error } = await supabase
+    .from('orders')
+    .insert(orderData);
+  if (error) throw error;
+  await sendOrderToGoogleSheets(orderData); // use what you already have, not a DB echo
+  return orderData;
+}
+
 export async function updateOrderStatus(id: string, status: string) {
   const { data, error } = await supabase
     .from('orders')

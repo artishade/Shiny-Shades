@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/router';
-import Script from 'next/script';
 import '@/index.css';
 
 import type { AppPropsWithLayout } from '@/types/layout';
@@ -19,6 +18,7 @@ import { trackingConfig } from '@/config/trackingConfig';
 import { trackPageView } from '@/lib/facebookPixel';
 
 // ─── Error Boundary ──────────────────────────────────────────────────────────
+// Ported verbatim from src/main.tsx.
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -91,49 +91,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     return this.props.children;
   }
 }
-
-// ─── Tracking snippets ────────────────────────────────────────────────────────
-// next/script only permits beforeInteractive inside _document, so the pixel/GTM
-// initialisers live here. They must render above <PixelTracker /> — next/script
-// appends afterInteractive inline scripts from a useEffect, and React runs
-// effects in tree order, so this guarantees fbq exists before the first
-// trackPageView() call.
-
-const TrackingScripts = memo(() => (
-  <>
-    <Script id="fb-pixel-init" strategy="afterInteractive">
-      {`
-        !function (f, b, e, v, n, t, s) {
-          if (f.fbq) return;
-          n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments) };
-          if (!f._fbq) f._fbq = n;
-          n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
-          t = b.createElement(e); t.async = !0; t.src = v;
-          s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
-        }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '${trackingConfig.facebookPixelId}');
-      `}
-    </Script>
-
-    {trackingConfig.gtmId && (
-      <Script id="gtm-init" strategy="afterInteractive">
-        {`
-          (function (w, d, s, l, i) {
-            w[l] = w[l] || [];
-            w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
-            var f = d.getElementsByTagName(s)[0],
-              j = d.createElement(s),
-              dl = l != 'dataLayer' ? '&l=' + l : '';
-            j.async = true;
-            j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
-            f.parentNode.insertBefore(j, f);
-          })(window, document, 'script', 'dataLayer', '${trackingConfig.gtmId}');
-        `}
-      </Script>
-    )}
-  </>
-));
-TrackingScripts.displayName = 'TrackingScripts';
 
 // ─── Facebook Pixel + GTM page-view tracker ───────────────────────────────────
 // Ported from src/App.tsx's <PixelTracker>. useLocation()'s pathname (via the
@@ -246,7 +203,6 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
       <AppBoot>
         {/* Global overlays — rendered outside the page tree to avoid re-mounts */}
         <FullScreenLoader />
-        <TrackingScripts />
         <PixelTracker />
         <ScrollToTop />
 

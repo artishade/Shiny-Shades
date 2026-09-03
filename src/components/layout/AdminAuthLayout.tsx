@@ -3,7 +3,7 @@
     Ported from src/App.tsx's <AdminProtectedRoute> wrapping <AdminLayout>.
    =================================================== */
 
-import { memo, useEffect, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from '@/lib/routerCompat';
 import { useAdminAuthStore } from '@/store';
 import { supabase } from '@/lib/supabase';
@@ -27,26 +27,15 @@ export function AdminAuthLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setAuthenticated(!!data.session);
-      setChecking(false);
-    });
-
-    // Without this the shell stays mounted after the token expires or the admin
-    // signs out in another tab — every query would silently 401 behind a live UI.
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthenticated(!!session);
-    });
-
-    return () => {
-      active = false;
-      sub.subscription.unsubscribe();
-    };
+  const checkSession = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    setAuthenticated(!!data.session);
+    setChecking(false);
   }, [setAuthenticated]);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
 
   useEffect(() => {
     if (!checking && !isAuthenticated) {
@@ -54,7 +43,8 @@ export function AdminAuthLayout({ children }: { children: ReactNode }) {
     }
   }, [checking, isAuthenticated, navigate]);
 
-  if (checking || !isAuthenticated) return <AdminFallback />;
+  if (checking) return <AdminFallback />;
+  if (!isAuthenticated) return <AdminFallback />;
 
   return <AdminLayout>{children}</AdminLayout>;
 }

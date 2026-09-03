@@ -1,27 +1,25 @@
 @import "tailwindcss";
 
-/* The --brand-* values come from brandingConfig.ts's BRAND_THEME_CSS, inlined by
-   _document.tsx. Aliasing rather than hardcoding hex keeps activeTheme authoritative. */
 @theme {
   --font-serif: "Cormorant Garamond", Georgia, serif;
   --font-sans: "Inter", system-ui, sans-serif;
 
-  --color-blush: var(--brand-blush);
-  --color-blush-light: var(--brand-blush-light);
-  --color-blush-dark: var(--brand-blush-dark);
+  --color-blush: #F4C2C2;
+  --color-blush-light: #FADBD8;
+  --color-blush-dark: #E8A0A0;
   --color-nude: #E3BCA4;
   --color-nude-light: #F0D5C0;
   --color-champagne: #F7E7CE;
   --color-ivory: #FFFFF0;
-  --color-rose-gold: var(--brand-primary);
-  --color-rose-gold-light: var(--brand-primary-light);
+  --color-rose-gold: #B76E79;
+  --color-rose-gold-light: #D4949E;
   --color-cream: #FFFDD0;
   --color-lavender: #E6E6FA;
   --color-lavender-dark: #C8C8E0;
-  --color-deep-rose: var(--brand-primary-dark);
-  --color-charcoal: var(--brand-charcoal);
-  --color-warm-gray: var(--brand-warm-gray);
-  --color-soft-bg: var(--brand-soft-bg);
+  --color-deep-rose: #8B4557;
+  --color-charcoal: #2D2D2D;
+  --color-warm-gray: #6B5B5B;
+  --color-soft-bg: #FDF8F4;
   --color-card-bg: rgba(255, 255, 255, 0.7);
 
   --animate-float: float 6s ease-in-out infinite;
@@ -94,8 +92,8 @@ html {
 
 body {
   font-family: "Inter", system-ui, sans-serif;
-  background-color: var(--color-soft-bg);
-  color: var(--color-charcoal);
+  background-color: #FDF8F4;
+  color: #2D2D2D;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -106,16 +104,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-soft-bg);
+  background: #FDF8F4;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-rose-gold);
+  background: #B76E79;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-deep-rose);
+  background: #8B4557;
 }
 
 /* ===== Glassmorphism Utilities ===== */
@@ -210,13 +208,13 @@ body {
 /* ===== Luxury Line ===== */
 .luxury-line {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-rose-gold), transparent);
+  background: linear-gradient(90deg, transparent, #B76E79, transparent);
 }
 
 /* ===== Selection Color ===== */
 ::selection {
-  background-color: var(--color-blush);
-  color: var(--color-charcoal);
+  background-color: #F4C2C2;
+  color: #2D2D2D;
 }
 
 /* ===== Admin Styles ===== */
@@ -244,7 +242,7 @@ body {
 .chart-bar {
   transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 4px 4px 0 0;
-  background: linear-gradient(to top, var(--color-deep-rose), var(--color-rose-gold), var(--color-blush));
+  background: linear-gradient(to top, #B76E79, #D4949E, #F4C2C2);
 }
 
 /* ===== Premium Smooth Loader ===== */
