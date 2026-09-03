@@ -221,7 +221,7 @@ export const BRAND = {
         "Shop Shiny Shades — premium destination for  western Dress, traditional dress, shapewear, nightwear, couple nightwear, and elegant western dresses. Fast delivery across Bangladesh.",
 
 // ── Assets ────────────────────────────────────────────────
-    logoUrl: '/images/logo.png',
+    logoUrl: '/web-app-manifest-512x512.png',
     faviconUrl: '/favicon.ico',
     /** Single source of truth for OG / Twitter share image */
     ogImage: `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'nrdmy8ir'}/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/${process.env.NEXT_PUBLIC_CLOUDINARY_OG_FOLDER || 'shinyshades'}/${process.env.NEXT_PUBLIC_CLOUDINARY_OG_FILENAME || 'og-banner.jpg'}`,
@@ -315,44 +315,24 @@ export type UIConfig = typeof UI;
 // ══════════════════════════════════════════════════════════════
 
 /**
- * applyBrandTheme()
- *
- * Injects brand colors as CSS custom properties on <html>.
- * Called once in main.tsx before React mounts, so every Tailwind
- * class that references a color variable (e.g. `text-rose-gold`,
- * `bg-rose-gold-light`) automatically uses the correct brand color.
- *
- * You can also call this at runtime to switch themes on the fly —
- * useful for a live theme-switcher in the admin panel.
+ * The `--brand-*` custom properties that index.css's `@theme` block aliases into
+ * Tailwind's color utilities (`text-rose-gold`, `bg-blush-light`, …).
+ * Serialized into a `<style>` tag by _document.tsx so ACTIVE_THEME is already
+ * applied on first paint.
  */
-export function applyBrandTheme(colors: BrandColors = BRAND.colors): void {
-    // Next.js renders this module on the server too (SSR/prerender), where
-    // `document` doesn't exist. The real application happens client-side via
-    // the inline blocking script in _document.tsx (see getInitialProps there)
-    // and this function stays as the runtime/theme-switcher entry point.
-    if (typeof document === 'undefined') return;
-
-    const r = document.documentElement;
-
-    // Primary accent (maps to Tailwind's `rose-gold` utilities)
-    r.style.setProperty('--color-rose-gold', colors.primary);
-    r.style.setProperty('--color-rose-gold-light', colors.primaryLight);
-    r.style.setProperty('--color-deep-rose', colors.primaryDark);
-
-    // Soft tint palette (blush, etc.)
-    r.style.setProperty('--color-blush', colors.blush);
-    r.style.setProperty('--color-blush-light', colors.blushLight);
-    r.style.setProperty('--color-blush-dark', colors.blushDark);
-
-    // Structural colors
-    r.style.setProperty('--color-soft-bg', colors.softBg);
-    r.style.setProperty('--color-charcoal', colors.charcoal);
-    r.style.setProperty('--color-warm-gray', colors.warmGray);
-
-    // Keep body background in sync so pre-hydration flicker is gone
-    document.body.style.backgroundColor = colors.softBg;
-    document.body.style.color = colors.charcoal;
-}
+export const BRAND_THEME_CSS = `:root{${Object.entries({
+    'primary': BRAND.colors.primary,
+    'primary-light': BRAND.colors.primaryLight,
+    'primary-dark': BRAND.colors.primaryDark,
+    'blush': BRAND.colors.blush,
+    'blush-light': BRAND.colors.blushLight,
+    'blush-dark': BRAND.colors.blushDark,
+    'soft-bg': BRAND.colors.softBg,
+    'charcoal': BRAND.colors.charcoal,
+    'warm-gray': BRAND.colors.warmGray,
+})
+    .map(([name, value]) => `--brand-${name}:${value}`)
+    .join(';')}}`;
 
 // ─── Legacy aliases ──────────────────────────────────────────────────────────
 // Kept so files that still import `brandingConfig` or `BRAND` the old way

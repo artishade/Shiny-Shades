@@ -17,11 +17,20 @@ if (fs.existsSync(siteConfigPath)) {
   }
 }
 
-// 2. Static routes (these never come from the DB)
+// 2. Static routes (these never come from the DB).
+//    Excluded on purpose: /cart, /checkout, /payment/*, /admin/* and /404 —
+//    all either transactional, noindex, or auth-gated.
+const now = new Date().toISOString();
 const routes = [
-  { path: '', changefreq: 'daily', priority: '1.0', lastmod: new Date().toISOString() },
-  { path: 'shop', changefreq: 'daily', priority: '0.9', lastmod: new Date().toISOString() },
-  { path: 'search', changefreq: 'daily', priority: '0.7', lastmod: new Date().toISOString() },
+  { path: '', changefreq: 'daily', priority: '1.0', lastmod: now },
+  { path: 'shop', changefreq: 'daily', priority: '0.9', lastmod: now },
+  { path: 'categories', changefreq: 'weekly', priority: '0.8', lastmod: now },
+  { path: 'search', changefreq: 'daily', priority: '0.7', lastmod: now },
+  { path: 'about', changefreq: 'monthly', priority: '0.5', lastmod: now },
+  { path: 'contact', changefreq: 'monthly', priority: '0.5', lastmod: now },
+  { path: 'return-policy', changefreq: 'yearly', priority: '0.3', lastmod: now },
+  { path: 'privacy-policy', changefreq: 'yearly', priority: '0.3', lastmod: now },
+  { path: 'terms', changefreq: 'yearly', priority: '0.3', lastmod: now },
 ];
 
 // 3. Pull live categories + products from Supabase (M1 fix — was reading

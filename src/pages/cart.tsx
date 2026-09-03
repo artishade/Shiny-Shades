@@ -31,28 +31,16 @@ export const CartPage: React.FC = () => {
   } = useCartStore();
   const [couponCode, setCouponCode] = React.useState('');
 
-  /* GTM — view_cart */
-React.useEffect(() => {
-  if (items.length === 0) return;
-
-  // Meta Pixel
-  trackPageView();
-  items.forEach((item) => {
-    trackViewContent(item.product.name, item.product.price * item.quantity);
-  });
-
-  // GTM — view_cart (existing code stays)
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ ecommerce: null });
-  window.dataLayer.push({
-    event: 'view_cart',
-    // ...unchanged
-  });
-}, []);
-
-  
+  // Fires once per mount with the cart as it was on arrival — re-firing on every
+  // quantity change would inflate view_cart in GA4.
   React.useEffect(() => {
     if (items.length === 0) return;
+
+    trackPageView();
+    items.forEach((item) => {
+      trackViewContent(item.product.name, item.product.price * item.quantity);
+    });
+
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({ ecommerce: null });
     window.dataLayer.push({

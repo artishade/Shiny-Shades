@@ -22,6 +22,12 @@ export const useAdminAuthStore = create<AdminAuthStore>()(
 
       setAdmin: (admin) => set({ admin }),
     }),
-    { name: 'website-admin' },
+    {
+      name: 'website-admin',
+      // Only the display profile is cached. `isAuthenticated` is derived from the
+      // Supabase session on every mount — persisting it would let anyone flip the
+      // guard from DevTools and would survive token expiry.
+      partialize: (state) => ({ admin: state.admin }),
+    },
   ),
 );

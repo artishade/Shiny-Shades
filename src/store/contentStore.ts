@@ -67,10 +67,6 @@ export interface SiteSettings {
   facebookPixelId: string;
   /** Google Tag Manager container ID — e.g. "GTM-TWN3NF5S" */
   gtmId: string;
-  /** Google Search Console HTML tag verification content value */
-  googleSearchConsoleVerification: string;
-  /** Bing Webmaster Tools verification content value */
-  bingVerification: string;
 
   // ── Social links ──────────────────────────────────────────────────────────
   instagram: string;
@@ -170,8 +166,6 @@ export const defaultSiteSettings: SiteSettings = {
 
   facebookPixelId: '',
   gtmId: '',
-  googleSearchConsoleVerification: '',
-  bingVerification: '',
 
   instagram: SITE.instagram,
   facebook: SITE.facebook,

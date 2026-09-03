@@ -13,9 +13,45 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://www.shinyshades.store/categories</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.shinyshades.store/search</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.shinyshades.store/about</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.shinyshades.store/contact</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.shinyshades.store/return-policy</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://www.shinyshades.store/privacy-policy</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://www.shinyshades.store/terms</loc>
+    <lastmod>2026-09-03</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

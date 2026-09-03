@@ -7,7 +7,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL; // NOT VITE_ prefix
+    const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL;
     if (!GOOGLE_SHEET_URL) {
         // Silently skip if not configured — don't break checkout
         return res.status(200).json({ ok: true, skipped: true });

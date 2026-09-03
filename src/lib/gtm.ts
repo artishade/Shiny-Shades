@@ -8,10 +8,9 @@ declare global {
 
 const CURRENCY = trackingConfig.currency;
 
-// NOTE: The GTM container ID (trackingConfig.gtmId, format "GTM-XXXXXXX")
-// is loaded via the GTM snippet in index.html. This file only pushes
-// events into window.dataLayer, which GTM reads from once the container
-// script (using trackingConfig.gtmId) has initialized it.
+// The GTM container script (trackingConfig.gtmId) is injected by
+// <TrackingScripts> in _app.tsx. This file only pushes events into
+// window.dataLayer, which GTM drains once the container has initialised it.
 
 const push = (obj: object) => {
     window.dataLayer = window.dataLayer || [];

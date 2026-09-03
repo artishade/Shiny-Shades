@@ -3,6 +3,7 @@
 
 import type { FC, ReactNode } from "react";
 import Head from "next/head";
+import { BRAND } from "@/config/brandingConfig";
 
 type OpenGraphType =
     | "website"
@@ -55,20 +56,21 @@ export interface SEOProps {
     twitterCreator?: string;
     robots?: RobotsDirective[];
     url?: string;
-    themeColor?: string;
     jsonLd?: Record<string, unknown> | Record<string, unknown>[];
     children?: ReactNode;
 }
 
 const DEFAULTS = {
-    siteName: "My Site",
+    siteName: BRAND.fullName,
     locale: "en_BD",
     ogType: "website" as OpenGraphType,
     twitterCard: "summary_large_image" as TwitterCardType,
-    robots: ["index", "follow"] as RobotsDirective[],
-    themeColor: "#ffffff",
+    robots: ["index", "follow", "max-snippet:-1", "max-image-preview:large"] as RobotsDirective[],
 };
 
+// `key` values must match the ones CustomerLayout's <DefaultSEO> uses: next/head
+// only de-dupes across <Head> instances via key (it ignores `property`, so og:*
+// tags would otherwise appear twice and crawlers would read the site-wide one).
 const SEO: FC<SEOProps> = ({
     title,
     description,
@@ -86,7 +88,6 @@ const SEO: FC<SEOProps> = ({
     twitterCreator,
     robots = DEFAULTS.robots,
     url,
-    themeColor = DEFAULTS.themeColor,
     jsonLd,
     children,
 }) => {
@@ -105,36 +106,33 @@ const SEO: FC<SEOProps> = ({
     return (
         <Head>
             <title>{title}</title>
-            <meta name="title" content={title} />
-            <meta name="description" content={description} />
-            {keywordsContent && <meta name="keywords" content={keywordsContent} />}
-            <meta name="robots" content={robotsContent} />
-            <meta name="googlebot" content={robotsContent} />
-            <meta name="theme-color" content={themeColor} />
+            <meta name="description" content={description} key="description" />
+            {keywordsContent && <meta name="keywords" content={keywordsContent} key="keywords" />}
+            <meta name="robots" content={robotsContent} key="robots" />
 
-            {canonical && <link rel="canonical" href={canonical} />}
+            {canonical && <link rel="canonical" href={canonical} key="canonical" />}
 
-            <meta property="og:type" content={ogType} />
-            <meta property="og:title" content={title} />
-            <meta property="og:description" content={description} />
-            <meta property="og:site_name" content={siteName} />
-            <meta property="og:locale" content={locale} />
-            {resolvedUrl && <meta property="og:url" content={resolvedUrl} />}
-            {image && <meta property="og:image" content={image} />}
-            {image && imageAlt && <meta property="og:image:alt" content={imageAlt} />}
-            {imageWidth && <meta property="og:image:width" content={String(imageWidth)} />}
-            {imageHeight && <meta property="og:image:height" content={String(imageHeight)} />}
+            <meta property="og:type" content={ogType} key="og:type" />
+            <meta property="og:title" content={title} key="og:title" />
+            <meta property="og:description" content={description} key="og:description" />
+            <meta property="og:site_name" content={siteName} key="og:site_name" />
+            <meta property="og:locale" content={locale} key="og:locale" />
+            {resolvedUrl && <meta property="og:url" content={resolvedUrl} key="og:url" />}
+            {image && <meta property="og:image" content={image} key="og:image" />}
+            {image && imageAlt && <meta property="og:image:alt" content={imageAlt} key="og:image:alt" />}
+            {imageWidth && <meta property="og:image:width" content={String(imageWidth)} key="og:image:width" />}
+            {imageHeight && <meta property="og:image:height" content={String(imageHeight)} key="og:image:height" />}
 
-            <meta name="twitter:card" content={twitterCard} />
-            <meta name="twitter:title" content={title} />
-            <meta name="twitter:description" content={description} />
-            {twitterSite && <meta name="twitter:site" content={twitterSite} />}
-            {twitterCreator && <meta name="twitter:creator" content={twitterCreator} />}
-            {image && <meta name="twitter:image" content={image} />}
-            {image && imageAlt && <meta name="twitter:image:alt" content={imageAlt} />}
+            <meta name="twitter:card" content={twitterCard} key="twitter:card" />
+            <meta name="twitter:title" content={title} key="twitter:title" />
+            <meta name="twitter:description" content={description} key="twitter:description" />
+            {twitterSite && <meta name="twitter:site" content={twitterSite} key="twitter:site" />}
+            {twitterCreator && <meta name="twitter:creator" content={twitterCreator} key="twitter:creator" />}
+            {image && <meta name="twitter:image" content={image} key="twitter:image" />}
+            {image && imageAlt && <meta name="twitter:image:alt" content={imageAlt} key="twitter:image:alt" />}
 
             {jsonLdItems.map((item, index) => (
-                <script key={index} type="application/ld+json">
+                <script key={`jsonld-${index}`} type="application/ld+json">
                     {JSON.stringify(item)}
                 </script>
             ))}

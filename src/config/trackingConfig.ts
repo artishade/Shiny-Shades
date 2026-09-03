@@ -6,27 +6,25 @@
 import { SITE } from '@/config/siteConfig';
 export const trackingConfig = {
     /**
-     * Facebook Pixel ID — read from VITE_FB_PIXEL_ID (Vercel env var).
-     * Falls back to the known ID if the env var isn't set, so nothing
-     * breaks if you haven't added it to Vercel yet — but you should:
-     * Vercel Project Settings > Environment Variables > VITE_FB_PIXEL_ID.
-     * index.html reads the SAME env var via Vite's %VITE_*% placeholder
-     * substitution, so both stay in sync automatically.
+     * Facebook Pixel ID. Set NEXT_PUBLIC_FB_PIXEL_ID in Vercel Project Settings >
+     * Environment Variables; the fallback keeps tracking alive if it's unset.
      */
     facebookPixelId: process.env.NEXT_PUBLIC_FB_PIXEL_ID || '1341948154747302',
 
     /**
-     * Google Tag Manager container ID — read from VITE_GTM_ID (Vercel env var).
-     * Format: GTM-XXXXXXX. Falls back to the known ID if unset.
-     * index.html reads the SAME env var, so both stay in sync automatically.
+     * Google Tag Manager container ID (format: GTM-XXXXXXX). Empty disables GTM.
      */
     gtmId: process.env.NEXT_PUBLIC_GTM_ID || '',
 
     /**
-     * Google Search Console HTML-tag verification content value.
-     * Leave empty string if already verified or not using Search Console.
+     * Google Search Console HTML-tag verification content value — the single
+     * source for the meta tag _document.tsx emits.
      */
-    googleSearchConsoleVerification: '',
+    googleSearchConsoleVerification:
+        process.env.NEXT_PUBLIC_GSC_VERIFICATION || 'S_qDJr2t5ntRG4FAH_n9NqEUkde824Aea7M7hoVuSFk',
+
+    /** Bing Webmaster Tools verification content value. */
+    bingVerification: process.env.NEXT_PUBLIC_BING_VERIFICATION || '',
 
     /**
      * ISO 4217 currency code used across all tracking events.

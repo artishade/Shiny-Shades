@@ -34,6 +34,7 @@ import { supabase } from '@/lib/supabase';
 import { useCartStore, useRecentlyViewedStore } from '@/store';
 import type { Product } from '@/types';
 import { trackViewContent, trackAddToCart } from '@/lib/facebookPixel';
+import { getOptimizedImageUrl } from '@/lib/cloudinary';
 import { SITE } from '@/config/siteConfig';
 import { BRAND, UI } from '@/config/brandingConfig';
 import type { GetStaticPaths, GetStaticProps } from 'next';
@@ -72,14 +73,6 @@ const resolveColor = (raw: string): string => {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const getOptimizedImageUrl = (url: string, width = 750): string => {
-  if (!url || !url.includes('cloudinary.com')) return url;
-  const parts = url.split('/upload/');
-  if (parts.length !== 2) return url;
-  // f_auto, q_auto reduces image size by 70% without visible loss
-  return `${parts[0]}/upload/w_${width},q_auto,f_auto,dpr_auto/${parts[1]}`;
-};
-
 const getImageAlt = (
   productName: string,
   selectedColor: string,
@@ -250,7 +243,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           normalised.images.forEach((imgUrl) => {
             if (imgUrl?.startsWith('http')) {
               const img = new Image();
-              img.src = getOptimizedImageUrl(imgUrl, 750);
+              img.src = getOptimizedImageUrl(imgUrl, { width: 750 });
             }
           });
         }
@@ -410,7 +403,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
     const keywords = product.seoKeywords?.trim() || autoKeywords;
     const ogImage = product.images[0]?.startsWith('http')
-      ? getOptimizedImageUrl(product.images[0], 1000)
+      ? getOptimizedImageUrl(product.images[0], { width: 1000 })
       : `${ORIGIN}/images/og-image.jpg`;
 
     const availability = product.stock === 0
@@ -427,7 +420,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       '@id': `${canonical}#product`,
       name: product.name,
       description: product.description || product.shortDescription || product.name,
-      image: product.images.filter((img) => img.startsWith('http')).map((img) => getOptimizedImageUrl(img, 1000)),
+      image: product.images.filter((img) => img.startsWith('http')).map((img) => getOptimizedImageUrl(img, { width: 1000 })),
       sku: product.sku || product.id,
       brand: { '@type': 'Brand', name: BRAND.fullName, url: ORIGIN },
       category: product.category,
@@ -537,7 +530,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   product.images.map((img, index) => (
                     <img
                       key={img + index}
-                      src={getOptimizedImageUrl(img, 750)}
+                      src={getOptimizedImageUrl(img, { width: 750 })}
                       alt={getImageAlt(product.name, selectedColor, selectedSize, index)}
                       width={750}
                       height={1000}
@@ -611,7 +604,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           }`}
                       >
                         <img
-                          src={getOptimizedImageUrl(img, 180)}
+                          src={getOptimizedImageUrl(img, { width: 180 })}
                           alt=""
                           loading="lazy"
                           width={80}
