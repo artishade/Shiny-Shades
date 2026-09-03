@@ -69,7 +69,12 @@ export const useCartStore = create<CartStore>()(
         }
 
         // FACEBOOK PIXEL TRACKING
-        trackAddToCart(product.name, product.price);
+        trackAddToCart({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity,
+        });
         /* GTM DATA LAYER — add_to_cart */
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({ ecommerce: null });

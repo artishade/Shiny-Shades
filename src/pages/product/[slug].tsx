@@ -33,7 +33,7 @@ import { ProductCard } from '@/components/home';
 import { supabase } from '@/lib/supabase';
 import { useCartStore, useRecentlyViewedStore } from '@/store';
 import type { Product } from '@/types';
-import { trackViewContent, trackAddToCart } from '@/lib/facebookPixel';
+import { trackViewContent } from '@/lib/facebookPixel';
 import { SITE } from '@/config/siteConfig';
 import { BRAND, UI } from '@/config/brandingConfig';
 import type { GetStaticPaths, GetStaticProps } from 'next';
@@ -267,7 +267,11 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
         // Async Non-blocking Analytics
         setTimeout(() => {
-          trackViewContent(normalised.name, normalised.price);
+          trackViewContent({
+            id: normalised.id,
+            name: normalised.name,
+            price: normalised.price,
+          });
           window.dataLayer = window.dataLayer || [];
           window.dataLayer.push({ ecommerce: null });
           window.dataLayer.push({
@@ -327,25 +331,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
     addItem(product, selectedSize, selectedColor, quantity);
 
-    // Cleaned Single Tracking Call
-    trackAddToCart(product.name, product.price * quantity);
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push({ ecommerce: null });
-    window.dataLayer.push({
-      event: 'add_to_cart',
-      ecommerce: {
-        currency: SITE.currency.code,
-        value: product.price * quantity,
-        items: [{
-          item_id: product.id,
-          item_name: product.name,
-          item_category: product.category,
-          price: product.price,
-          quantity,
-        }],
-      },
-    });
-
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   }, [product, selectedSize, selectedColor, quantity, addItem]);
@@ -358,7 +343,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       return;
     }
     addItem(product, selectedSize, selectedColor, quantity);
-    trackAddToCart(product.name, product.price * quantity);
     navigate('/checkout');
   }, [product, selectedSize, selectedColor, quantity, addItem, navigate]);
 

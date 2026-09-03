@@ -6,28 +6,28 @@
 
 export const CONTACT = {
     /** Display phone number — shown in footer, navbar drawer, contact page */
-    phone: '+8801410125508',
+    phone: '+8801893905484',
 
     /** WhatsApp number — digits only, no spaces or + sign */
-    whatsapp: '8801410125508',
+    whatsapp: '+8801893905484',
 
     /** Payment / bKash tap-to-copy number used in Checkout */
-    bkashNumber: '01410125508',
+    bkashNumber: '+8801893905484',
 
     /** Support email — shown in footer if set */
-    email: 'Shinyshades@mailbox.org',
+    email: '',
 
     /** Physical office address */
-    address: ' Dhaka, Mohammadpur, Kaderabad Housing ',
+    address: '  ',
 
     /** Instagram profile URL — leave '' to hide icon */
-    instagram: 'https://www.instagram.com/shinyshades.store/',
+    instagram: '',
 
     /** Facebook page URL — leave '' to hide icon */
-    facebook: 'https://www.facebook.com/shinyshades/',
+    facebook: 'https://www.facebook.com/shiny.shades.store',
 
     /** Facebook Messenger URL — leave '' if unused */
-    messenger: 'https://m.me/shinyshades',
+    messenger: 'https://m.me/shiny.shades.store',
 } as const;
 
 export type ContactConfig = typeof CONTACT;

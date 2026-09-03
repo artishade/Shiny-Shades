@@ -448,7 +448,15 @@ export const CheckoutPage: React.FC = () => {
 
   const handleReviewOrder = () => {
     if (validate()) {
-      trackInitiateCheckout(total);
+      trackInitiateCheckout(
+        checkoutItems.map((item) => ({
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+        })),
+        total,
+      );
 
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ ecommerce: null });
@@ -528,7 +536,15 @@ export const CheckoutPage: React.FC = () => {
 
     try {
       await placeOrder(orderData);
-      trackPurchase(total);
+      trackPurchase(
+        checkoutItems.map((item) => ({
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity,
+        })),
+        total,
+      );
 
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ ecommerce: null });

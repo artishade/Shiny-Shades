@@ -38,7 +38,12 @@ React.useEffect(() => {
   // Meta Pixel
   trackPageView();
   items.forEach((item) => {
-    trackViewContent(item.product.name, item.product.price * item.quantity);
+    trackViewContent({
+      id: item.product.id,
+      name: item.product.name,
+      price: item.product.price,
+      quantity: item.quantity,
+    });
   });
 
   // GTM — view_cart (existing code stays)
