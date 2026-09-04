@@ -8,14 +8,17 @@
    - WatermarkPreview shown for whichever image is at index 0
    =================================================== */
 import { AdminAuthLayout } from '@/components/layout/AdminAuthLayout';
-import { uploadToCloudinary } from '@/lib/cloudinary';
+import { uploadToCloudinary, getOptimizedImageUrl } from '@/lib/cloudinary';
+import { SIMPLE_COLORS } from '@/lib/simpleColors';
 import { BRAND } from '@/config/brandingConfig';
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Edit2, Trash2, Search, X, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, RefreshCw, Sparkles } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import { Button, Input, Select, Badge, Modal } from '@/components/ui';
 import { useProductStore, useCategoryStore } from '@/store';
 import type { Product } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { Link } from '@/lib/routerCompat';
 import { UploadCloud } from 'lucide-react';
 import { GripVertical } from 'lucide-react';
 import { useContentStore } from '@/store';
@@ -108,29 +111,6 @@ const getNearestColorName = nearestColor.from(nearestColorMap);
 // ─────────────────────────────────────────────────
 // SIMPLE COLOR PALETTE — snaps any hex to a common name
 // ─────────────────────────────────────────────────
-const SIMPLE_COLORS: Record<string, string> = {
-  'White': '#FFFFFF', 'Off White': '#FAF9F6', 'Cream': '#FFFDD0',
-  'Ivory': '#FFFFF0', 'Black': '#000000', 'Charcoal': '#36454F',
-  'Dark Grey': '#A9A9A9', 'Grey': '#808080', 'Light Grey': '#D3D3D3',
-  'Red': '#FF0000', 'Dark Red': '#8B0000', 'Maroon': '#800000',
-  'Crimson': '#DC143C', 'Pink': '#FFC0CB', 'Hot Pink': '#FF69B4',
-  'Baby Pink': '#F4C2C2', 'Rose': '#FF007F', 'Blush': '#FFB6C1',
-  'Magenta': '#FF00FF', 'Purple': '#800080', 'Violet': '#EE82EE',
-  'Lavender': '#E6E6FA', 'Navy': '#000080', 'Blue': '#0000FF',
-  'Sky Blue': '#87CEEB', 'Baby Blue': '#89CFF0', 'Royal Blue': '#4169E1',
-  'Teal': '#008080', 'Cyan': '#00FFFF', 'Turquoise': '#40E0D0',
-  'Green': '#008000', 'Dark Green': '#006400', 'Light Green': '#90EE90',
-  'Mint': '#98FF98', 'Olive': '#808000', 'Yellow': '#FFFF00',
-  'Light Yellow': '#FFFFE0', 'Gold': '#FFD700', 'Orange': '#FFA500',
-  'Peach': '#FFDAB9', 'Coral': '#FF6B6B', 'Salmon': '#FA8072',
-  'Brown': '#8B4513', 'Dark Brown': '#5C4033', 'Light Brown': '#C4A882',
-  'Tan': '#D2B48C', 'Beige': '#F5F5DC', 'Skin': '#FED9B0',
-  'Nude': '#E8C9A0', 'Camel': '#C19A6B', 'Rose Gold': '#B76E79',
-  'Copper': '#B87333', 'Silver': '#C0C0C0', 'Wine': '#722F37',
-  'Burgundy': '#800020', 'Mustard': '#FFDB58', 'Khaki': '#F0E68C',
-  'Lemon': '#FFF44F', 'Indigo': '#4B0082', 'Mauve': '#E0B0FF',
-};
-
 const getNearestSimpleColor = nearestColor.from(SIMPLE_COLORS);
 
 const resolveToSimpleName = (hex: string): string => {
@@ -1030,6 +1010,15 @@ export const AdminProducts: React.FC = () => {
   const [detectedColors, setDetectedColors] = useState<string[]>([]);
   const [detectingColors, setDetectingColors] = useState(false);
 
+  // ── AI autofill (vision → title / descriptions / tags / colors) ──
+  const [aiRunning, setAiRunning] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiErrorCode, setAiErrorCode] = useState('');
+  const [aiNote, setAiNote] = useState('');
+  // Guards the auto-run. React strict mode double-invokes effects in dev, and
+  // each run costs a paid API call, so the key is claimed before the await.
+  const aiAutoKeyRef = useRef<string | null>(null);
+
   // ── Custom Logo Watermark state (persisted in localStorage) ──
   const [customLogoWm, setCustomLogoWm] = useState<CustomLogoWmConfig>(() => loadCustomLogoWmFromLS());
   const customLogoFileRef = useRef<HTMLInputElement>(null);
@@ -1091,6 +1080,137 @@ export const AdminProducts: React.FC = () => {
     });
     return () => { cancelled = true; };
   }, [imageFiles[0]?.name, imageFiles[0]?.size]);
+
+  /**
+   * Merges a vision result into the form.
+   *
+   * Regenerate overwrites the AI-owned fields; the automatic run only fills
+   * empty ones, so a name the admin already typed is never replaced. Colors are
+   * additive either way.
+   */
+  const applyAiResult = (ai: any, force: boolean) => {
+    setForm((prev: any) => {
+      const next = { ...prev };
+
+      const fill = (field: string, value: unknown) => {
+        const text = typeof value === 'string' ? value.trim() : '';
+        if (!text) return;
+        if (force || !String(prev[field] || '').trim()) next[field] = text;
+      };
+
+      fill('name', ai.title);
+      fill('shortDescription', ai.shortDescription);
+      fill('description', ai.description);
+
+      // Notes are the admin's own field — only seeded when blank, never on force.
+      const desc = typeof ai.description === 'string' ? ai.description.trim() : '';
+      if (desc && !String(prev.customText || '').trim()) next.customText = desc;
+
+      if (next.name && !String(prev.sku || '').trim()) next.sku = generateSKU(next.name);
+
+      const tags: string[] = Array.isArray(ai.tags) ? ai.tags : [];
+      if (tags.length && (force || !(prev.tags || []).length)) {
+        next.tags = tags;
+        next.seoKeywords = tags.join(', ');
+      }
+
+      const colors: string[] = Array.isArray(ai.colors) ? ai.colors : [];
+      if (colors.length) {
+        next.colors = [...new Set([...(prev.colors || []), ...colors])];
+      }
+
+      return next;
+    });
+  };
+
+  const runAiAutofill = async (force: boolean) => {
+    if (aiRunning) return;
+
+    const file = imageFiles[0];
+    const existingUrl = (form.images || []).find(
+      (img: string) => typeof img === 'string' && img.startsWith('http')
+    );
+    if (!file && !existingUrl) {
+      setAiError('Add an image first.');
+      return;
+    }
+
+    setAiRunning(true);
+    setAiError('');
+    setAiErrorCode('');
+    setAiNote('');
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Session expired. Sign in again.');
+
+      const body: Record<string, unknown> = {
+        category: form.category || '',
+        priceHint: form.price || '',
+        existingText: form.customText || '',
+      };
+
+      if (file) {
+        // Same shape as uploadToCloudinary, just smaller: ~470 KB of base64,
+        // well inside the route's 4 MB body limit.
+        const compressed = await imageCompression(file, {
+          maxSizeMB: 0.35,
+          maxWidthOrHeight: 1024,
+          fileType: 'image/webp',
+          useWebWorker: false,
+        });
+        body.imageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(new Error('Could not read the image file.'));
+          reader.readAsDataURL(compressed);
+        });
+      } else {
+        body.imageUrl = getOptimizedImageUrl(existingUrl, { width: 1024 });
+      }
+
+      const res = await fetch('/api/ai-product-metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAiErrorCode(json?.code || '');
+        throw new Error(json?.error || `AI request failed (${res.status})`);
+      }
+
+      applyAiResult(json.data || {}, force);
+
+      const dropped: string[] = json.meta?.droppedColors || [];
+      const parts = [
+        `${(json.data?.tags || []).length} tags`,
+        `${(json.data?.colors || []).length} colors`,
+      ];
+      if (dropped.length) parts.push(`dropped ${dropped.join(', ')}`);
+      setAiNote(
+        `Filled ${force ? 'all AI fields' : 'empty fields'} using ${json.meta?.model || 'AI'} · ${parts.join(' · ')}`
+      );
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'AI autofill failed.');
+    } finally {
+      setAiRunning(false);
+    }
+  };
+
+  // Fires once per newly picked cover image, and only for new products — an
+  // existing listing is never rewritten without pressing Regenerate.
+  useEffect(() => {
+    const file = imageFiles[0];
+    if (!file || editingId) return;
+
+    const key = `${file.name}:${file.size}`;
+    if (aiAutoKeyRef.current === key) return;
+    aiAutoKeyRef.current = key;
+
+    runAiAutofill(false);
+  }, [imageFiles[0]?.name, imageFiles[0]?.size, editingId]);
 
   // ── Auto-generate SKU ──
   const generateSKU = (name: string): string => {
@@ -1190,6 +1310,11 @@ export const AdminProducts: React.FC = () => {
     setWmPanelOpen(false);
     setDetectedColors([]);
     setDetectingColors(false);
+    setAiRunning(false);
+    setAiError('');
+    setAiErrorCode('');
+    setAiNote('');
+    aiAutoKeyRef.current = null;
   };
 
 
@@ -1346,6 +1471,8 @@ export const AdminProducts: React.FC = () => {
 
       const payload = {
         name: form.name, slug,
+        description: form.description?.trim() || null,
+        short_description: form.shortDescription?.trim() || null,
         images: finalImages,
         video_url: finalVideoUrl || null,
         price: form.price,
@@ -2271,6 +2398,48 @@ export const AdminProducts: React.FC = () => {
             )
           }
 
+          {/* ── AI AUTOFILL ── */}
+          <div className="rounded-xl border border-rose-gold/25 bg-rose-gold/5 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-charcoal">
+                  <Sparkles size={14} className="text-rose-gold" /> AI Autofill
+                </p>
+                <p className="text-xs text-[#6B5B55] mt-0.5">
+                  Reads the cover image and fills title, descriptions, tags and colors.
+                  {editingId ? ' Press Regenerate to rewrite this listing.' : ' Runs once when you add the first image.'}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                loading={aiRunning}
+                disabled={aiRunning || (imageFiles.length === 0 && (form.images || []).length === 0)}
+                onClick={() => runAiAutofill(true)}
+              >
+                <RefreshCw size={14} /> Regenerate
+              </Button>
+            </div>
+
+            {aiRunning && (
+              <p className="text-xs text-[#6B5B55] mt-2 animate-pulse">Analyzing image…</p>
+            )}
+            {!aiRunning && aiNote && (
+              <p className="text-xs text-green-700 mt-2">{aiNote}</p>
+            )}
+            {!aiRunning && aiError && (
+              <p className="text-xs text-red-600 mt-2">
+                {aiError}{' '}
+                {aiErrorCode === 'no_credentials' && (
+                  <Link to="/admin/api-keys" className="underline font-medium">
+                    Add a credential
+                  </Link>
+                )}
+              </p>
+            )}
+          </div>
+
           {/* ── COLORS ── */}
           <div>
             <label className="block text-sm font-medium text-[#6B5B55] mb-0.5">Colors</label>
@@ -2485,17 +2654,45 @@ export const AdminProducts: React.FC = () => {
           </div>
 
           {/* ── Description ── */}
-          <div>
-            <label className="block text-sm font-medium text-[#6B5B55] mb-1.5">
-              Products Details / Description / Notes (optional)
-            </label>
-            <textarea
-              value={form.customText || ''}
-              onChange={e => setForm({ ...form, customText: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30 resize-none"
-              rows={5}
-              placeholder="Write custom product information, offer, sizing help, delivery notes, fabric details etc."
-            />
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#6B5B55] mb-1.5">
+                Short Description (used in meta description &amp; cards)
+              </label>
+              <textarea
+                value={form.shortDescription || ''}
+                onChange={e => setForm({ ...form, shortDescription: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30 resize-none"
+                rows={2}
+                placeholder="One line a shopper sees first — fabric, fit, occasion."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#6B5B55] mb-1.5">
+                Full Description
+              </label>
+              <textarea
+                value={form.description || ''}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30 resize-none"
+                rows={5}
+                placeholder="Describe the product in a few sentences."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#6B5B55] mb-1.5">
+                Extra Details / Notes (optional)
+              </label>
+              <textarea
+                value={form.customText || ''}
+                onChange={e => setForm({ ...form, customText: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-blush/30 bg-white/80 text-sm focus:outline-none focus:ring-2 focus:ring-rose-gold/30 resize-none"
+                rows={5}
+                placeholder="Write custom product information, offer, sizing help, delivery notes, fabric details etc."
+              />
+            </div>
           </div>
 
           {/* ── Product Assembly ── */}

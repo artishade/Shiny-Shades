@@ -8,7 +8,7 @@ import { Link, useLocation, useNavigate } from '@/lib/routerCompat';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, FolderOpen, ShoppingCart, Users,
-  FileText, Ticket, BarChart3, AlertTriangle, LogOut, Menu
+  FileText, Ticket, BarChart3, AlertTriangle, LogOut, Menu, KeyRound
 } from 'lucide-react';
 import { useAdminAuthStore } from '@/store';
 import { BRAND } from '@/config/brandingConfig';
@@ -23,6 +23,7 @@ const sidebarItems = [
   { label: 'Coupons', path: '/admin/coupons', icon: Ticket },
   { label: 'Inventory', path: '/admin/inventory', icon: AlertTriangle },
   { label: 'Reports', path: '/admin/reports', icon: BarChart3 },
+  { label: 'API Keys', path: '/admin/api-keys', icon: KeyRound },
 ];
 
 export const AdminLayout: React.FC<{ children: ReactNode }> = ({ children }) => {
