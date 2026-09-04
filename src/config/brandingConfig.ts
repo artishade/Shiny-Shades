@@ -218,7 +218,7 @@ export const BRAND = {
     defaultTitle:
         "Shiny Shades — Premium Women's Fashion",
     defaultDescription:
-        "Shop Shiny Shades — premium destination for  western Dress, traditional dress, shapewear, nightwear, couple nightwear, and elegant western dresses. Fast delivery across Bangladesh.",
+        "Shop Shiny Shades — premium destination for elegant western dresses, traditional dresses, tops, and everyday women's fashion. Fast delivery across Bangladesh.",
 
 // ── Assets ────────────────────────────────────────────────
     logoUrl: '/images/logo.png',

@@ -566,8 +566,8 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 export const getStaticProps: GetStaticProps<{
-  category: Category | null;
-  products: Product[];
+  initialCategory: Category | null;
+  initialProducts: Product[];
 }> = async (ctx) => {
   const slug = ctx.params?.slug;
   if (typeof slug !== 'string' || !slug) {
@@ -577,7 +577,7 @@ export const getStaticProps: GetStaticProps<{
   const client = getServerSupabase();
   if (!client) {
     // No Supabase creds at build time — let the client component fetch.
-    return { props: { category: null, products: [] }, revalidate: 300 };
+    return { props: { initialCategory: null, initialProducts: [] }, revalidate: 300 };
   }
 
   try {
@@ -615,13 +615,13 @@ export const getStaticProps: GetStaticProps<{
 
     if (prodErr) {
       // Category exists but products failed — still render the page shell.
-      return { props: { category, products: [] }, revalidate: 300 };
+      return { props: { initialCategory: category, initialProducts: [] }, revalidate: 300 };
     }
 
     const products = (productRows || []).map(normaliseRow);
 
     return {
-      props: { category, products },
+      props: { initialCategory: category, initialProducts: products },
       // Category product lists change less often than product pages.
       revalidate: 300,
     };

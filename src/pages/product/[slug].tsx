@@ -219,7 +219,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     let cancelled = false;
 
     const fetchProduct = async () => {
-      setLoading(true);
+      // Only show the skeleton when there's nothing pre-rendered to show —
+      // otherwise hydration would unmount the SSG <Head> and its meta tags.
+      if (!initialProduct || initialProduct.slug !== slug) setLoading(true);
       setNotFound(false);
 
       const imgParam = parseInt(searchParams.get('img') || '0', 10);
@@ -313,7 +315,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [slug, addRecentlyViewed, searchParams]);
+  }, [slug, addRecentlyViewed, searchParams, initialProduct]);
 
   // ── Auto scroll active thumbnail into view ─────────────────────────────────
   useEffect(() => {
@@ -929,8 +931,8 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 export const getStaticProps: GetStaticProps<{
-  product: Product | null;
-  related: Product[];
+  initialProduct: Product | null;
+  initialRelated: Product[];
 }> = async (ctx) => {
   const slug = ctx.params?.slug;
   if (typeof slug !== 'string' || !slug) {
@@ -941,7 +943,7 @@ export const getStaticProps: GetStaticProps<{
   if (!client) {
     // Can't fetch at build time — let the client component handle it and
     // revalidate this empty shell quickly.
-    return { props: { product: null, related: [] }, revalidate: 60 };
+    return { props: { initialProduct: null, initialRelated: [] }, revalidate: 60 };
   }
 
   try {
@@ -969,7 +971,7 @@ export const getStaticProps: GetStaticProps<{
     }
 
     return {
-      props: { product, related },
+      props: { initialProduct: product, initialRelated: related },
       // Regenerate at most once a minute — keeps price/stock roughly fresh
       // without hammering Supabase on every visit.
       revalidate: 60,
