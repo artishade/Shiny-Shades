@@ -84,10 +84,20 @@ export function rowToProduct(item: any): Product {
 
 // ─── Supabase helpers ─────────────────────────────────────────────────────────
 
+/**
+ * Columns every listing surface reads. `select('*')` also returned custom_text,
+ * seo_title and seo_keywords — ~44 KB across the catalogue that only the product
+ * detail page renders, paid on each list fetch and again in every ISR payload.
+ */
+export const PRODUCT_LIST_COLUMNS =
+  'id,name,slug,description,short_description,price,compare_price,images,video_url,' +
+  'category_name,category_slug,sizes,colors,stock,sku,tags,is_featured,is_trending,' +
+  'is_new_arrival,is_on_sale,rating,review_count,created_at,updated_at';
+
 async function fetchAllFromSupabase(): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select(PRODUCT_LIST_COLUMNS)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 

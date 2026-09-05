@@ -6,7 +6,7 @@
 import { AdminAuthLayout } from '@/components/layout/AdminAuthLayout';
 import React from 'react';
 import { Link } from '@/lib/routerCompat';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { DollarSign, ShoppingCart, Package, AlertTriangle, TrendingUp, ShoppingBag } from 'lucide-react';
 import { FadeIn } from '@/components/ui';
 import { useOrderStore, useProductStore, useCategoryStore } from '@/store';

@@ -8,9 +8,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from '@/lib/routerCompat';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Search, Menu, X, ChevronDown, Heart, Package } from 'lucide-react';
-import { useCartStore, useUIStore, useCategoryStore, useContentStore } from '@/store';
+import { useCartStore } from '@/store/cartStore';
+import { useUIStore } from '@/store/uiStore';
+import { useCategoryStore } from '@/store/categoryStore';
+import { useContentStore } from '@/store/contentStore';
 import { BRAND } from '@/config/brandingConfig';
 import { CONTACT } from '@/config/contactConfig';
 
@@ -27,22 +30,23 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
   const lastScrollY = useRef(0);
   const navigate = useNavigate();
   const location = useLocation();
-  const { mobileMenuOpen, setMobileMenuOpen } = useUIStore();
-  const getItemCount = useCartStore(s => s.getItemCount);
+  // Narrow selectors, not whole-store reads. The navbar is a framer-motion tree
+  // on every customer page, and subscribing to all of uiStore meant an unrelated
+  // write like stickyCartPulse re-rendered the whole thing.
+  const mobileMenuOpen = useUIStore((s) => s.mobileMenuOpen);
+  const setMobileMenuOpen = useUIStore((s) => s.setMobileMenuOpen);
 
-  const { categories, loadCategories, loading: categoriesLoading } = useCategoryStore();
-  const { loadContent, getSiteSettings } = useContentStore();
-  const logoUrl = getSiteSettings().logoUrl;
+  // Derived in the selector so the badge tracks the cart itself. Reading the
+  // getItemCount getter and calling it during render subscribed to nothing —
+  // the count only refreshed when some other store happened to re-render this.
+  const itemCount = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
 
-  const itemCount = getItemCount();
+  const categories = useCategoryStore((s) => s.categories);
+  const categoriesLoading = useCategoryStore((s) => s.loading);
+  const logoUrl = useContentStore((s) => s.content.siteSettings.logoUrl);
 
   // Theme colors — pulled live from brandingConfig.ts
   const { primary, primaryDark, blush, blushLight, softBg, charcoal, warmGray } = BRAND.colors;
-
-  useEffect(() => {
-    loadCategories();
-    loadContent();
-  }, [loadCategories, loadContent]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -244,11 +248,9 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
                   >
                     {link.label}
                     {isActive(link.path) && (
-                      <motion.span
-                        layoutId="activeNavUnderline"
+                      <span
                         className="absolute -bottom-0.5 left-0 right-0 h-px"
                         style={{ backgroundColor: primary }}
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       />
                     )}
                   </Link>

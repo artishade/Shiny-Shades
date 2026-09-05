@@ -12,12 +12,21 @@ declare global { interface Window { dataLayer: any[]; } }
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from '@/lib/routerCompat';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Search as SearchIcon, ArrowRight, Clock, X, TrendingUp } from 'lucide-react';
 import Head from 'next/head';
+import type { GetStaticProps } from 'next';
 import { ProductCard } from '@/components/home';
 import { Button, EmptyState } from '@/components/ui';
-import { useProductStore } from '@/store';
+import {
+  useProductStore,
+  usePrerenderedProducts,
+  rowToProduct,
+  PRODUCT_LIST_COLUMNS,
+} from '@/store/productStore';
+import { rowToCategory } from '@/store/categoryStore';
+import { mergeWithDefaults, CONTENT_ROW_ID } from '@/store/contentStore';
+import type { PageInitialData } from '@/types/layout';
 import { siteConfig } from '@/config/siteConfig';
 
 /* ─── Cookie helpers for search history ─── */
@@ -65,18 +74,24 @@ const clearSearchHistory = (): string[] => {
   return [];
 };
 
-export const SearchPage: React.FC = () => {
+export const SearchPage: React.FC<PageInitialData> = ({ initialProducts }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [inputValue, setInputValue] = useState(query);
-  const { products, fetchProducts } = useProductStore();
+
+  // Prerendered rows so a shared /search?q=… link has results in the HTML; the
+  // store takes over once _app's hydrateStores commits. Selector reads instead of
+  // the whole store, which re-rendered this framer-motion grid on every store write.
+  const { products } = usePrerenderedProducts(initialProducts);
+  const fetchProducts = useProductStore((s) => s.fetchProducts);
 
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Background refresh — stock and prices must not sit on an ISR snapshot.
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
   // Load search history from cookie on mount
   useEffect(() => {
@@ -416,6 +431,52 @@ export const SearchPage: React.FC = () => {
 
 SearchPage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── ISR ──────────────────────────────────────────────────────────────────────
+// The query itself is client-side (?q= is not part of the static path), but the
+// product pool it filters is not — baking it in removes the Supabase round trip
+// that used to stand between landing here and seeing any result. See index.tsx.
+
+/** Service-role key first so builds bypass RLS; anon as fallback. */
+const getServerSupabase = () => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (!url || !key) return null;
+  const { createClient } = require('@supabase/supabase-js');
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+
+const REVALIDATE_SECONDS = 60;
+
+export const getStaticProps: GetStaticProps<PageInitialData> = async () => {
+  const sb = getServerSupabase();
+  if (!sb) return { props: {}, revalidate: REVALIDATE_SECONDS };
+
+  try {
+    const [contentRes, categoryRes, productRes] = await Promise.all([
+      sb.from('site_content').select('content').eq('id', CONTENT_ROW_ID).maybeSingle(),
+      sb.from('categories').select('*').order('created_at', { ascending: true }),
+      sb
+        .from('products')
+        .select(PRODUCT_LIST_COLUMNS)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const props: PageInitialData = {
+      initialContent: contentRes.data?.content ? mergeWithDefaults(contentRes.data.content) : null,
+      initialCategories: (categoryRes.data ?? []).map(rowToCategory),
+      initialProducts: (productRes.data ?? []).map(rowToProduct),
+    };
+
+    // Next refuses `undefined` in props — rowToProduct leaves comparePrice undefined.
+    return { props: JSON.parse(JSON.stringify(props)), revalidate: REVALIDATE_SECONDS };
+  } catch (err) {
+    console.error('[Search getStaticProps]', err);
+    return { props: {}, revalidate: REVALIDATE_SECONDS };
+  }
 };
 
 export default SearchPage;

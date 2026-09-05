@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from '@/lib/routerCompat';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { FadeIn, SectionHeader } from '@/components/ui';
 import { useCategoryStore } from '@/store';

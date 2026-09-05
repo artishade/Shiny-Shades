@@ -23,7 +23,7 @@ import {
 } from '@/components/home';
 import { FadeIn, SectionHeader, PriceDisplay } from '@/components/ui';
 import { useProductStore } from '@/store';
-import { rowToProduct } from '@/store/productStore';
+import { rowToProduct, PRODUCT_LIST_COLUMNS } from '@/store/productStore';
 import { rowToCategory } from '@/store/categoryStore';
 import { useRecentlyViewedStore } from '@/store/uiStore';
 import { getOptimizedImageUrl, getResponsiveSrcSet } from '@/lib/cloudinary';
@@ -205,13 +205,12 @@ RecentlyViewedSkeletonCard.displayName = 'RecentlyViewedSkeletonCard';
  * Images are lazy-loaded (below-fold) with responsive srcSet for CLS/LCP safety.
  */
 const RecentlyViewedProducts = memo(() => {
-  const {
-    products,
-    fetchProducts,
-    loading: { list: listLoading },
-    hasFetched,
-  } = useProductStore();
-  const { getRecentProducts, productIds } = useRecentlyViewedStore();
+  const products = useProductStore((s) => s.products);
+  const fetchProducts = useProductStore((s) => s.fetchProducts);
+  const listLoading = useProductStore((s) => s.loading.list);
+  const hasFetched = useProductStore((s) => s.hasFetched);
+  const productIds = useRecentlyViewedStore((s) => s.productIds);
+  const getRecentProducts = useRecentlyViewedStore((s) => s.getRecentProducts);
 
   // Guard: fetch only if not already loaded (store is idempotent)
   useEffect(() => {
@@ -499,7 +498,7 @@ export const getStaticProps: GetStaticProps<PageInitialData> = async () => {
     const [contentRes, categoryRes, productRes] = await Promise.all([
       sb.from('site_content').select('content').eq('id', CONTENT_ROW_ID).maybeSingle(),
       sb.from('categories').select('*').order('created_at', { ascending: true }),
-      sb.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+      sb.from('products').select(PRODUCT_LIST_COLUMNS).eq('is_active', true).order('created_at', { ascending: false }),
     ]);
 
     const props: PageInitialData = {

@@ -6,14 +6,13 @@ declare global {
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React from 'react';
 import { Link, useNavigate } from '@/lib/routerCompat';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag } from 'lucide-react';
 import { Button, EmptyState, PriceDisplay } from '@/components/ui';
 import { useCartStore } from '@/store';
 import { SITE } from '@/config/siteConfig';
 import Head from 'next/head';
 import { trackPageView, trackViewContent } from '@/lib/facebookPixel';
-import type { GetServerSideProps } from 'next';
 
 export const CartPage: React.FC = () => {
   const navigate = useNavigate();
@@ -163,7 +162,6 @@ React.useEffect(() => {
                 {items.map((item) => (
                   <motion.div
                     key={`${item.product.id}-${item.selectedSize}-${item.selectedColor}`}
-                    layout
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -100 }}
@@ -400,12 +398,9 @@ CartPage.getLayout = function getLayout(page: React.ReactElement) {
 };
 
 // ─── CSR: cart contents live in the client-side Zustand store ─────────────────
-// We still opt in to SSR (rather than `next/dynamic` ssr:false) so the page
-// layout, fonts and SEO meta render server-side; the actual cart data shows up
-// after hydration. Cache-Control: no-store keeps every visitor's cart private.
-export const getServerSideProps: GetServerSideProps = async ({ res }) => {
-  res.setHeader('Cache-Control', 'no-store, max-age=0');
-  return { props: {} };
-};
+// Deliberately no getServerSideProps. The props were always empty — it existed
+// only to set Cache-Control, which next.config.js now does via headers(). As an
+// SSR route every client-side navigation here waited on a /_next/data round
+// trip before rendering; as a static route it navigates instantly.
 
 export default CartPage;

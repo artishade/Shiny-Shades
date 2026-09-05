@@ -2,7 +2,7 @@ import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from '@/lib/routerCompat';
 import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Button } from '@/components/ui';
 import SEO from '@/components/SEO';
 import { BRAND } from '@/config/brandingConfig';

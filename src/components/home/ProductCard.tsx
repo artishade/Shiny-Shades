@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from '@/lib/routerCompat';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { ShoppingBag, Star } from 'lucide-react';
 import { PriceDisplay, Badge, StarRating } from '@/components/ui';
 import { getOptimizedImageUrl, getResponsiveSrcSet } from '@/lib/cloudinary';

@@ -7,7 +7,7 @@
    =================================================== */
 
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Link } from '@/lib/routerCompat';
 import Head from 'next/head';
 
@@ -52,16 +52,12 @@ interface CategoriesPageProps {
 }
 
 export const CategoriesPage: React.FC<CategoriesPageProps> = ({ initialCategories = [] }) => {
-  const { categories: storeCategories, loadCategories, loading } = useCategoryStore();
+  const storeCategories = useCategoryStore((s) => s.categories);
+  const loading = useCategoryStore((s) => s.loading);
 
   // Prefer ISR-supplied categories when present so the SSR HTML matches the
-  // first client render. The store still kicks off its own fetch to keep
-  // everything else in sync.
+  // first client render. _app's AppBoot already kicks off the store's own fetch.
   const categories = initialCategories.length > 0 ? initialCategories : storeCategories;
-
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
 
   const topLevel = useMemo(() => categories.filter((c) => !c.parentId), [categories]);
   const childrenOf = useMemo(() => {

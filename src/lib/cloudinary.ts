@@ -1,6 +1,8 @@
-import imageCompression from 'browser-image-compression';
-
 export const uploadToCloudinary = async (file: File) => {
+    // Only the admin upload path needs the compressor. Every customer page pulls
+    // getOptimizedImageUrl/getResponsiveSrcSet from this module, so a top-level
+    // import would put all 57 KB of it in the shared bundle.
+    const { default: imageCompression } = await import('browser-image-compression');
 
     const compressedFile = await imageCompression(file, {
         maxSizeMB: 0.8,

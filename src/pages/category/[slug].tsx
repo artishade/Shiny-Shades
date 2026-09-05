@@ -109,7 +109,7 @@ export const CategoryPage: React.FC<CategoryPageProps> = ({
   const [loading, setLoading] = useState<boolean>(!initialCategory || initialProducts.length === 0);
 
   // Category metadata — loaded at app boot, always available synchronously
-  const { categories } = useCategoryStore();
+  const categories = useCategoryStore((s) => s.categories);
 
   // Prefer the SSR-provided category (so ISR pre-rendered HTML matches the
   // first client render). Falls back to the in-memory store on the client.

@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from '@/lib/routerCompat';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Package, FolderOpen, ShoppingCart, Users,
   FileText, Ticket, BarChart3, AlertTriangle, LogOut, Menu, KeyRound, Sparkles

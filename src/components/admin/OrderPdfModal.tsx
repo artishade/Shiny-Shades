@@ -8,7 +8,7 @@
    =================================================== */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import {
     X, Download, Printer, Eye, Settings2, ChevronDown, ChevronUp,
     Calendar, FileDown, Loader2, CheckSquare, Square,

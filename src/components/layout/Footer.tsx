@@ -2,110 +2,31 @@
    Shiny Shades - Elegant Footer (Minimal Layout)
    =================================================== */
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from '@/lib/routerCompat';
 import { ArrowRight } from 'lucide-react';
-import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useCategoryStore } from '@/store/categoryStore';
 import { BRAND } from '@/config/brandingConfig';
 import { CONTACT } from '@/config/contactConfig';
 import { SITE } from '@/config/siteConfig';
-
-// ===================================================
-// TYPES
-// ===================================================
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface CategoryState {
-  categories: Category[];
-  loading: boolean;
-  error: string | null;
-  fetchCategories: () => Promise<void>;
-  setCategories: (categories: Category[]) => void;
-}
-
-// ===================================================
-// SUPABASE-BACKED ZUSTAND STORE
-// Global singleton — all components share the same
-// fetched state, so one tab re-fetch updates all.
-// (UNCHANGED — do not touch this logic)
-// ===================================================
-
-const useSupabaseCategoryStore = create<CategoryState>((set) => ({
-  categories: [],
-  loading: false,
-  error: null,
-
-  fetchCategories: async () => {
-    set({ loading: true, error: null });
-
-    const { data, error } = await supabase
-      .from('categories')
-      .select('id, name, slug')
-      .order('name', { ascending: true });
-
-    if (error) {
-      set({ loading: false, error: error.message });
-      return;
-    }
-
-    set({ categories: data ?? [], loading: false });
-  },
-
-  setCategories: (categories: Category[]) => set({ categories }),
-}));
-
-// ===================================================
-// HOOK — fetch on mount + realtime sync
-// (UNCHANGED — do not touch this logic)
-// ===================================================
-
-function useCategoriesSync() {
-  const { fetchCategories } = useSupabaseCategoryStore();
-
-  useEffect(() => {
-    // Initial fetch
-    fetchCategories();
-
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    // Delay subscription slightly to avoid premature-close errors
-    const timer = setTimeout(() => {
-      channel = supabase
-        .channel('public:categories')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'categories' },
-          () => {
-            fetchCategories();
-          }
-        )
-        .subscribe();
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
-  }, [fetchCategories]);
-}
 
 // ===================================================
 // FOOTER COMPONENT
 // ===================================================
 
 export const Footer: React.FC = () => {
-  const { categories, loading } = useSupabaseCategoryStore();
+  // Reads the shared category store, which _app's AppBoot already loads. This
+  // used to be a private zustand store with its own fetch plus a Supabase
+  // realtime channel — one extra request and one WebSocket per page view, to
+  // render a single link.
+  const allCategories = useCategoryStore((s) => s.categories);
+  const loading = useCategoryStore((s) => s.loading);
 
-  // Kick off fetch + realtime subscription
-  useCategoriesSync();
+  const categories = useMemo(
+    () => [...allCategories].sort((a, b) => a.name.localeCompare(b.name)),
+    [allCategories],
+  );
 
   // Newsletter signup — inserts into the newsletter_subscribers table.
   // RLS allows public INSERT only (see migration 005); nobody can read

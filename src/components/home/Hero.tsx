@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from '@/lib/routerCompat';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { usePrerenderedContent, type ContentData } from '@/store/contentStore';

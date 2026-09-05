@@ -3,7 +3,7 @@
    =================================================== */
 
 import React from 'react';
-import { motion, type HTMLMotionProps } from 'framer-motion';
+import { m as motion, type HTMLMotionProps } from 'framer-motion';
 import { X } from 'lucide-react';
 import { SITE } from '@/config/siteConfig';
 

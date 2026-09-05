@@ -2,7 +2,7 @@ import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React from 'react';
 import { Link, useSearchParams } from '@/lib/routerCompat';
 import { XCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Button } from '@/components/ui';
 import SEO from '@/components/SEO';
 import { BRAND } from '@/config/brandingConfig';

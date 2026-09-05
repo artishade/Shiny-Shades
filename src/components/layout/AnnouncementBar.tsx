@@ -12,18 +12,15 @@
    =================================================== */
 
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useContentStore } from '@/store/contentStore';
 
 export const AnnouncementBar: React.FC = () => {
-  const { content } = useContentStore();
+  const announcement = useContentStore((s) => s.content?.announcement);
 
   const [visible, setVisible] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Safe access
-  const announcement = content?.announcement;
 
   // Filter empty messages safely
   const messages =

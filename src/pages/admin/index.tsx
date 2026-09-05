@@ -6,7 +6,7 @@ import { useAdminAuthStore } from '@/store';
 import { BRAND } from '@/config/brandingConfig';
 import React, { useState } from 'react';
 import { useNavigate, Link } from '@/lib/routerCompat';
-import { motion } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { signIn } from '@/lib/supabase';

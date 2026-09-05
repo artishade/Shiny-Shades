@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/router';
+import { LazyMotion, domAnimation } from 'framer-motion';
 import '@/index.css';
 
 import type { AppPropsWithLayout, PageInitialData } from '@/types/layout';
@@ -204,13 +205,19 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
   return (
     <ErrorBoundary>
-      <AppBoot pageProps={pageProps as PageInitialData}>
-        {/* Global side-effects — rendered outside the page tree to avoid re-mounts */}
-        <PixelTracker />
-        <ScrollToTop />
+      {/* Every animated component imports `m as motion`, not `motion` — the full
+          `motion` component statically pulls in every feature, which was a 43 kB
+          gzip chunk on all 28 routes. `strict` makes a stray `motion.` throw
+          instead of silently restoring that chunk. */}
+      <LazyMotion features={domAnimation} strict>
+        <AppBoot pageProps={pageProps as PageInitialData}>
+          {/* Global side-effects — rendered outside the page tree to avoid re-mounts */}
+          <PixelTracker />
+          <ScrollToTop />
 
-        {getLayout(<Component {...pageProps} />)}
-      </AppBoot>
+          {getLayout(<Component {...pageProps} />)}
+        </AppBoot>
+      </LazyMotion>
     </ErrorBoundary>
   );
 }

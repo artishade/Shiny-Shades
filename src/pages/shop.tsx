@@ -7,14 +7,23 @@ declare global { interface Window { dataLayer: any[]; } }
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from '@/lib/routerCompat';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m as motion, AnimatePresence } from 'framer-motion';
 import { Grid3X3, Grid2X2, SlidersHorizontal, X } from 'lucide-react';
+import type { GetStaticProps } from 'next';
 
 import { ProductCard } from '@/components/home';
 import { Button, Select } from '@/components/ui';
 import { ProductFilterPanel, extractAvailableFilters } from '@/components/shop/ProductFilter';
 import { ShopCategoryMarquee } from '@/components/shop/ShopCategoryMarquee';
-import { supabase } from '@/lib/supabase';
+import {
+  useProductStore,
+  usePrerenderedProducts,
+  rowToProduct,
+  PRODUCT_LIST_COLUMNS,
+} from '@/store/productStore';
+import { rowToCategory } from '@/store/categoryStore';
+import { mergeWithDefaults, CONTENT_ROW_ID } from '@/store/contentStore';
+import type { PageInitialData } from '@/types/layout';
 import Head from 'next/head';
 
 // 24 is ideal for 2, 3, or 4 columns grid
@@ -70,45 +79,23 @@ const buildScatteredCards = (products: any[]): ShopCard[] => {
   return allCards.map(({ product, imageIndex }) => ({ product, imageIndex }));
 };
 
-// Normalize database product row into clean Product shape
-const normaliseProduct = (p: any) => ({
-  id: p.id,
-  name: p.name ?? '',
-  slug: p.slug ?? '',
-  description: p.description ?? '',
-  shortDescription: p.short_description ?? '',
-  price: Number(p.price) || 0,
-  comparePrice: p.compare_price ? Number(p.compare_price) : 0,
-  images: Array.isArray(p.images) ? p.images : [],
-  videoUrl: p.video_url ?? '',
-  category: p.category_name ?? p.category ?? '',
-  categorySlug: p.category_slug ?? '',
-  sizes: Array.isArray(p.sizes) ? p.sizes : [],
-  colors: Array.isArray(p.colors) ? p.colors : [],
-  stock: Number(p.stock) || 0,
-  sku: p.sku ?? '',
-  tags: Array.isArray(p.tags) ? p.tags : [],
-  customText: p.custom_text ?? '',
-  isFeatured: Boolean(p.is_featured),
-  isTrending: Boolean(p.is_trending),
-  isNewArrival: Boolean(p.is_new_arrival),
-  isOnSale: Boolean(p.is_on_sale),
-  rating: Number(p.rating) || 0,
-  reviewCount: Number(p.review_count) || 0,
-  createdAt: p.created_at ?? '',
-  updatedAt: p.updated_at ?? '',
-});
-
 /* ─────────────────────────────────────────────
    MAIN SHOP PAGE
 ───────────────────────────────────────────── */
-export const ShopPage: React.FC = () => {
+export const ShopPage: React.FC<PageInitialData> = ({ initialProducts }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Prerendered rows paint the grid on the first frame; the shared store takes
+  // over as soon as _app's hydrateStores commits. This page used to keep its own
+  // useState copy and its own select('*') on mount, so arriving from anywhere
+  // else refetched the whole catalogue a second time.
+  const { products, ready } = usePrerenderedProducts(initialProducts);
+  const listLoading = useProductStore((s) => s.loading.list);
+  const fetchProducts = useProductStore((s) => s.fetchProducts);
+  const loading = !ready && listLoading;
 
   const [showFilters, setShowFilters] = useState(false);
   const [gridCols, setGridCols] = useState<3 | 4>(4);
-  const [products, setProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // How many cards currently rendered
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
@@ -125,9 +112,11 @@ export const ShopPage: React.FC = () => {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
 
+  // Background refresh — stock and prices must not sit on an ISR snapshot for a
+  // whole revalidate window. No-ops while the store's 5-minute cache is fresh.
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
   useEffect(() => {
     if (filterParam === 'trending') {
@@ -138,24 +127,6 @@ export const ShopPage: React.FC = () => {
     }
   }, [filterParam, searchParams]);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching products:', error);
-    } else {
-      const normalised = (data || []).map(normaliseProduct);
-      setProducts(normalised);
-      const extracted = extractAvailableFilters(normalised);
-      setPriceRange([extracted.minPrice, extracted.maxPrice]);
-    }
-    setLoading(false);
-  };
-
   // Reset infinite scroll count whenever filters, query or sorting changes
   useEffect(() => {
     setVisibleCount(BATCH_SIZE);
@@ -163,6 +134,14 @@ export const ShopPage: React.FC = () => {
 
   // Available filters extracted dynamically from base product pool
   const availableFilters = useMemo(() => extractAvailableFilters(products), [products]);
+
+  // Widen the slider to the real catalogue bounds once, when products first land.
+  const priceBoundsSeeded = useRef(false);
+  useEffect(() => {
+    if (priceBoundsSeeded.current || products.length === 0) return;
+    priceBoundsSeeded.current = true;
+    setPriceRange([availableFilters.minPrice, availableFilters.maxPrice]);
+  }, [products.length, availableFilters.minPrice, availableFilters.maxPrice]);
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories(prev =>
@@ -559,8 +538,7 @@ export const ShopPage: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  <motion.div
-                    layout
+                  <div
                     className={`grid gap-4 md:gap-6 ${gridCols === 3
                       ? 'grid-cols-2 md:grid-cols-3'
                       : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
@@ -569,7 +547,6 @@ export const ShopPage: React.FC = () => {
                     {visibleCards.map(({ product, imageIndex }, index) => (
                       <motion.div
                         key={`${product.id}-${imageIndex}`}
-                        layout
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: Math.min((index % BATCH_SIZE) * 0.03, 0.25) }}
@@ -577,7 +554,7 @@ export const ShopPage: React.FC = () => {
                         <ProductCard product={product} priority={index < 4} imageIndex={imageIndex} />
                       </motion.div>
                     ))}
-                  </motion.div>
+                  </div>
 
                   {/* ── Infinite Scroll Observer & Loading Indicator ── */}
                   {visibleCount < scatteredCards.length && (
@@ -604,6 +581,52 @@ export const ShopPage: React.FC = () => {
 
 ShopPage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── ISR ──────────────────────────────────────────────────────────────────────
+// /shop was fully client-side: an empty shell plus a spinner until a browser
+// round trip to Supabase came back. The catalogue is baked into the HTML instead,
+// and _app pushes it into the stores so the shell fills in too. See index.tsx.
+
+/** Service-role key first so builds bypass RLS; anon as fallback. */
+const getServerSupabase = () => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (!url || !key) return null;
+  const { createClient } = require('@supabase/supabase-js');
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+
+const REVALIDATE_SECONDS = 60;
+
+export const getStaticProps: GetStaticProps<PageInitialData> = async () => {
+  const sb = getServerSupabase();
+  if (!sb) return { props: {}, revalidate: REVALIDATE_SECONDS };
+
+  try {
+    const [contentRes, categoryRes, productRes] = await Promise.all([
+      sb.from('site_content').select('content').eq('id', CONTENT_ROW_ID).maybeSingle(),
+      sb.from('categories').select('*').order('created_at', { ascending: true }),
+      sb
+        .from('products')
+        .select(PRODUCT_LIST_COLUMNS)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const props: PageInitialData = {
+      initialContent: contentRes.data?.content ? mergeWithDefaults(contentRes.data.content) : null,
+      initialCategories: (categoryRes.data ?? []).map(rowToCategory),
+      initialProducts: (productRes.data ?? []).map(rowToProduct),
+    };
+
+    // Next refuses `undefined` in props — rowToProduct leaves comparePrice undefined.
+    return { props: JSON.parse(JSON.stringify(props)), revalidate: REVALIDATE_SECONDS };
+  } catch (err) {
+    console.error('[Shop getStaticProps]', err);
+    return { props: {}, revalidate: REVALIDATE_SECONDS };
+  }
 };
 
 export default ShopPage;

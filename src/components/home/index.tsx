@@ -1,8 +1,6 @@
 export { Hero } from './Hero';
 export { BannerSlider } from './BannerSlider';
 export { CategoryShowcase } from './CategoryShowcase';
-export { Category } from './Category';
 export { TrendingProducts } from './TrendingProducts';
 export { ProductCard } from './ProductCard';
 export { FeaturedCollection } from './FeaturedCollection';
-import { useProductStore } from '@/store';

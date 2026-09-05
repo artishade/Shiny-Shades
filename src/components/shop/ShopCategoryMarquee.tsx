@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from '@/lib/routerCompat';
-import { useCategoryStore } from '@/store';
+import { useCategoryStore } from '@/store/categoryStore';
 import { useAutoScroll } from '@/components/home/useAutoScroll';
 
 const CARD_PX = 96;
@@ -9,12 +9,10 @@ const CARD_WIDTH = CARD_PX + GAP_PX;
 
 export const ShopCategoryMarquee: React.FC = () => {
   const navigate = useNavigate();
-  const { categories: allCategories, loadCategories } = useCategoryStore();
+  // _app's AppBoot already loads categories, so the local loadCategories() call
+  // this used to make was always a no-op second attempt.
+  const allCategories = useCategoryStore((s) => s.categories);
   const categories = allCategories.filter((cat) => !cat.parentId);
-
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
 
   const allSlides = [...categories, ...categories, ...categories];
 

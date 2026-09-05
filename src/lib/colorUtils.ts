@@ -1,6 +1,3 @@
-import { colornames as colorNameList } from 'color-name-list';
-import nearestColor from 'nearest-color';
-
 // ─── Standard fashion colors mapping (fast lookup) ───────────────────────────
 export const SIMPLE_COLORS: Record<string, string> = {
   'white': '#FFFFFF',
@@ -70,17 +67,52 @@ export const SIMPLE_COLORS: Record<string, string> = {
   'rainbow': 'linear-gradient(135deg,red,orange,yellow,green,blue,violet)',
 };
 
-// ─── Build comprehensive lookup from color-name-list ─────────────────────────
-const COLOR_NAME_TO_HEX: Record<string, string> = {};
-const nearestColorMap: Record<string, string> = {};
+// ─── Compound / non-palette names present in products.colors ─────────────────
+// Hex values are the ones color-name-list resolved these to, kept verbatim so
+// removing that 1.1 MB dependency from the customer bundle changed no swatch.
+const EXTRA_COLORS: Record<string, string> = {
+  'ash': '#BEBAA7',
+  'bottle green': '#006A4E',
+  'light blue': '#ADD8E6',
+  'lime green': '#8EAD2C',
+  'magenta pink': '#CC338B',
+  'mustard yellow': '#E1AD01',
+  'navy blue': '#000080',
+  'sky': '#76D6FF',
+  'waiouru': '#4C4E31',
+};
 
-colorNameList.forEach((c: { name: string; hex: string }) => {
-  const key = c.name.toLowerCase();
-  COLOR_NAME_TO_HEX[key] = c.hex;
-  nearestColorMap[c.name] = c.hex;
-});
+const COLOR_NAME_TO_HEX: Record<string, string> = { ...SIMPLE_COLORS, ...EXTRA_COLORS };
 
-const getNearestColor = nearestColor.from(nearestColorMap);
+// Longest first so "light green" beats "green" when both appear as words.
+const PALETTE_NAMES_BY_LENGTH = Object.keys(COLOR_NAME_TO_HEX)
+  .filter((name) => !COLOR_NAME_TO_HEX[name].startsWith('linear-gradient'))
+  .sort((a, b) => b.length - a.length);
+
+/**
+ * Last resort for free-form names an admin may type ("Bottle Green Silk").
+ * Picks the palette colour named earliest in the string, longest match first,
+ * so "Black & White mix" resolves to black rather than the neutral fallback.
+ */
+function matchPaletteWord(lower: string): string | null {
+  let bestAt = Infinity;
+  let bestHex: string | null = null;
+
+  for (const name of PALETTE_NAMES_BY_LENGTH) {
+    const at = lower.indexOf(name);
+    if (at === -1) continue;
+    // Word boundaries only — "red" must not match inside "shredded".
+    const before = at === 0 ? ' ' : lower[at - 1];
+    const after = lower[at + name.length] ?? ' ';
+    if (/[a-z]/.test(before) || /[a-z]/.test(after)) continue;
+    if (at < bestAt) {
+      bestAt = at;
+      bestHex = COLOR_NAME_TO_HEX[name];
+    }
+  }
+
+  return bestHex;
+}
 
 // Memory cache for resolved color queries
 const colorCache = new Map<string, string>();
@@ -119,18 +151,19 @@ export function resolveColorHex(input: string | undefined | null, fallback = '#C
 
   const lower = raw.toLowerCase();
 
-  // 3. Fast check against curated simple fashion colors
-  if (SIMPLE_COLORS[lower]) {
-    const val = SIMPLE_COLORS[lower];
-    colorCache.set(raw, val);
-    return val;
-  }
-
-  // 4. Exact match in 30,000+ name dictionary
+  // 3. Exact match against the curated palette
   if (COLOR_NAME_TO_HEX[lower]) {
     const val = COLOR_NAME_TO_HEX[lower];
     colorCache.set(raw, val);
     return val;
+  }
+
+  // 4. Compound names — resolved before the CSS test so the server and the
+  // client agree; step 5 is client-only and would otherwise mismatch on hydrate.
+  const word = matchPaletteWord(lower);
+  if (word) {
+    colorCache.set(raw, word);
+    return word;
   }
 
   // 5. Browser CSS native color test (e.g., standard CSS color names)
@@ -147,19 +180,7 @@ export function resolveColorHex(input: string | undefined | null, fallback = '#C
     }
   }
 
-  // 6. Nearest color fuzzy matching
-  try {
-    const matched = getNearestColor(lower);
-    if (matched?.value) {
-      const val = matched.value;
-      colorCache.set(raw, val);
-      return val;
-    }
-  } catch {
-    // ignore
-  }
-
-  // 7. Fallback
+  // 6. Fallback
   colorCache.set(raw, fallback);
   return fallback;
 }
