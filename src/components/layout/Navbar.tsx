@@ -13,7 +13,6 @@ import { ShoppingBag, Search, Menu, X, ChevronDown, Heart, Package } from 'lucid
 import { useCartStore } from '@/store/cartStore';
 import { useUIStore } from '@/store/uiStore';
 import { useCategoryStore } from '@/store/categoryStore';
-import { useContentStore } from '@/store/contentStore';
 import { BRAND } from '@/config/brandingConfig';
 import { CONTACT } from '@/config/contactConfig';
 
@@ -43,7 +42,14 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
 
   const categories = useCategoryStore((s) => s.categories);
   const categoriesLoading = useCategoryStore((s) => s.loading);
-  const logoUrl = useContentStore((s) => s.content.siteSettings.logoUrl);
+
+  /**
+   * The navbar mark is the favicon artwork from /public, not the siteSettings
+   * logoUrl it used to read. That column gets written as a side effect of
+   * uploading a watermark logo on /admin/products, so it was showing whichever
+   * image was stamped on products last — and at 1131px for a 40px box.
+   */
+  const navLogoSrc = BRAND.logo.icon;
 
   // Theme colors — pulled live from brandingConfig.ts
   const { primary, primaryDark, blush, blushLight, softBg, charcoal, warmGray } = BRAND.colors;
@@ -206,10 +212,10 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
               <Link to="/" className="flex-shrink-0 flex items-center gap-2.5 group">
                 <div
                   className="w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden transition-transform duration-300 group-hover:scale-105"
-                  style={{ backgroundColor: logoUrl ? 'transparent' : charcoal }}
+                  style={{ backgroundColor: navLogoSrc ? 'transparent' : charcoal }}
                 >
-                  {logoUrl ? (
-                    <img src={logoUrl} alt={BRAND.nameTop} className="w-full h-full object-cover" />
+                  {navLogoSrc ? (
+                    <img src={navLogoSrc} alt={BRAND.nameTop} className="w-full h-full object-contain" />
                   ) : (
                     <span
                       className="font-serif text-base md:text-lg font-bold"
@@ -432,10 +438,10 @@ export const Navbar: React.FC<NavbarProps> = ({ barVisible = false }) => {
                   <div className="flex items-center gap-2.5">
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
-                      style={{ backgroundColor: logoUrl ? 'transparent' : charcoal }}
+                      style={{ backgroundColor: navLogoSrc ? 'transparent' : charcoal }}
                     >
-                      {logoUrl ? (
-                        <img src={logoUrl} alt={BRAND.nameTop} className="w-full h-full object-cover" />
+                      {navLogoSrc ? (
+                        <img src={navLogoSrc} alt={BRAND.nameTop} className="w-full h-full object-contain" />
                       ) : (
                         <span className="font-serif text-sm font-bold" style={{ color: softBg }}>
                           {BRAND.nameTop?.charAt(0)?.toUpperCase()}

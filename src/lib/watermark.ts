@@ -214,7 +214,9 @@ export interface CustomLogoWmConfig {
 export const CUSTOM_LOGO_LS_KEY = 'ag_custom_logo_wm_v1';
 
 export const defaultCustomLogoWm: CustomLogoWmConfig = {
-  enabled: false,
+  // On by default now that resolveCustomLogoWm always finds a logo — before it,
+  // "enabled" with no uploaded image just fell through to the text logo.
+  enabled: true,
   imageDataUrl: '',
   size: 0.15,
   opacity: 0.85,
@@ -243,6 +245,71 @@ export const saveCustomLogoWmToLS = (cfg: CustomLogoWmConfig) => {
     if (typeof localStorage === 'undefined') return;
     localStorage.setItem(CUSTOM_LOGO_LS_KEY, JSON.stringify(cfg));
   } catch { }
+};
+
+/** The bundled brand mark, used when nothing else supplies a logo. */
+export const BRAND_LOGO_SRC = BRAND.logo.large;
+
+/** url → data URL. One fetch per logo per page load; logos rarely change. */
+const inlinedLogos = new Map<string, string>();
+
+/**
+ * Inline a logo as a data URL before it is ever drawn.
+ *
+ * A cross-origin image (every Cloudinary logo) taints the canvas, and the
+ * toBlob() that follows throws SecurityError from inside an onload callback
+ * where nothing catches it — applyWatermark's promise would never settle and
+ * the publish would hang. Same-origin files are inlined too, so one code path
+ * covers both.
+ */
+export const inlineLogo = async (url: string): Promise<string> => {
+  if (!url) throw new Error('No logo URL.');
+  if (url.startsWith('data:')) return url;
+
+  const cached = inlinedLogos.get(url);
+  if (cached) return cached;
+
+  const res = await fetch(url, { mode: 'cors' });
+  if (!res.ok) throw new Error(`Logo fetch failed (${res.status}).`);
+  const blob = await res.blob();
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Could not read the logo.'));
+    reader.readAsDataURL(blob);
+  });
+
+  inlinedLogos.set(url, dataUrl);
+  return dataUrl;
+};
+
+/**
+ * Fill in the logo the watermark should draw, in order of how deliberate the
+ * choice was: a logo uploaded in this browser, then the site logo saved in the
+ * database, then the bundled brand mark.
+ *
+ * The database step is what the CustomLogoWmConfig comment always claimed and
+ * no caller implemented — without it the logo watermark lived only in this
+ * browser's localStorage, so a cleared cache or a second device silently went
+ * back to stamping the text logo. `enabled` is left alone: it is the admin's
+ * logo-or-text switch, not a fallback signal.
+ */
+export const resolveCustomLogoWm = async (
+  cfg: CustomLogoWmConfig = loadCustomLogoWmFromLS(),
+  siteLogoUrl?: string,
+): Promise<CustomLogoWmConfig> => {
+  if (cfg.imageDataUrl && cfg.imageDataUrl.length > 10) return cfg;
+
+  for (const url of [siteLogoUrl, BRAND_LOGO_SRC]) {
+    if (!url) continue;
+    try {
+      return { ...cfg, imageDataUrl: await inlineLogo(url) };
+    } catch (err) {
+      console.warn('[watermark] logo unavailable:', url, err);
+    }
+  }
+  return cfg;
 };
 
 // ─────────────────────────────────────────────────

@@ -16,9 +16,9 @@ import { Button, Input, Select } from '@/components/ui';
 import { Check, Loader2, Plus, Sparkles, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { uploadToCloudinary } from '@/lib/cloudinary';
-import { applyWatermark, loadCustomLogoWmFromLS, loadWmSettings } from '@/lib/watermark';
+import { applyWatermark, loadWmSettings, resolveCustomLogoWm } from '@/lib/watermark';
 import { SIMPLE_COLORS } from '@/lib/simpleColors';
-import { useCategoryStore, useProductStore } from '@/store';
+import { useCategoryStore, useContentStore, useProductStore } from '@/store';
 import type { Product } from '@/types';
 
 export interface ProductDraftData {
@@ -174,7 +174,13 @@ export const ProductDraftCard: React.FC<ProductDraftCardProps> = ({ draft, meta,
      */
     const uploadImages = async (): Promise<{ urls: string[]; failed: number }> => {
         const wm = loadWmSettings();
-        const customLogoWm = loadCustomLogoWmFromLS();
+        // Read once, outside the loop: resolveCustomLogoWm may fetch and base64 the
+        // brand mark, and the result is identical for every image in this publish.
+        const site = useContentStore.getState().content.siteSettings;
+        const customLogoWm = await resolveCustomLogoWm(
+            undefined,
+            site.watermarkLogoUrl || site.logoUrl,
+        );
         const urls: string[] = [];
         let failed = 0;
 

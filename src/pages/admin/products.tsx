@@ -33,6 +33,7 @@ import {
   loadCustomLogoWmFromLS,
   saveCustomLogoWmToLS,
   defaultCustomLogoWm,
+  resolveCustomLogoWm,
   type CustomLogoWmConfig,
 } from '@/lib/watermark';
 
@@ -555,6 +556,31 @@ export const AdminProducts: React.FC = () => {
   const [customLogoWm, setCustomLogoWm] = useState<CustomLogoWmConfig>(() => loadCustomLogoWmFromLS());
   const customLogoFileRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * The logo actually stamped: the logo uploaded here if there is one, else the
+   * site logo saved in the database, else the bundled favicon brand mark.
+   *
+   * Kept separate from `customLogoWm` because that one is persisted — baking a
+   * fallback into localStorage would freeze it, and a brand logo changed later on
+   * the Content page would never reach the watermark. Preview and publish both
+   * read this, so what the admin sees is what gets stamped.
+   */
+  const siteLogoForWm = useContentStore(
+    (s) => s.content.siteSettings.watermarkLogoUrl || s.content.siteSettings.logoUrl,
+  );
+  const [resolvedLogoWm, setResolvedLogoWm] = useState<CustomLogoWmConfig>(customLogoWm);
+
+  useEffect(() => {
+    let cancelled = false;
+    resolveCustomLogoWm(customLogoWm, siteLogoForWm)
+      .then((cfg) => { if (!cancelled) setResolvedLogoWm(cfg); })
+      .catch(() => { if (!cancelled) setResolvedLogoWm(customLogoWm); });
+    return () => { cancelled = true; };
+  }, [customLogoWm, siteLogoForWm]);
+
+  /** True while the mark on screen is the brand fallback, not an upload. */
+  const usingBrandLogo = !customLogoWm.imageDataUrl && !!resolvedLogoWm.imageDataUrl;
+
   // Persist custom logo wm config whenever it changes
   useEffect(() => { saveCustomLogoWmToLS(customLogoWm); }, [customLogoWm]);
 
@@ -582,12 +608,15 @@ export const AdminProducts: React.FC = () => {
     };
     reader.readAsDataURL(file);
 
-    // Also push this logo to the site-wide brand settings (Navbar + watermark default)
+    // Also save it to the database, so the same mark is stamped from another
+    // browser or after this one's localStorage is cleared. The navbar no longer
+    // reads logoUrl — it draws the bundled favicon mark — so this row is now
+    // purely the watermark fallback.
     uploadToCloudinary(file)
       .then((url) => {
         const current = getSiteSettings();
         saveSiteSettings({
-          logoUrl: current.logoUrl || url, // don't overwrite an already-set nav logo unless empty
+          logoUrl: current.logoUrl || url, // only fills the blank; never overwrites
           watermarkLogoUrl: url,
         });
       })
@@ -895,6 +924,11 @@ export const AdminProducts: React.FC = () => {
     const urls: string[] = [];
     let failedCount = 0;
 
+    // Resolved here rather than read off `resolvedLogoWm` so a publish fired
+    // before that effect settles still stamps a logo. inlineLogo caches, so this
+    // is a map hit once the panel has already resolved the same URL.
+    const logoForStamp = await resolveCustomLogoWm(customLogoWm, siteLogoForWm);
+
     for (let i = 0; i < files.length; i++) {
       let uploaded = false;
 
@@ -925,7 +959,7 @@ export const AdminProducts: React.FC = () => {
             colorLeft: agLogoColorLeft,
             colorRight: agLogoColorRight,
           },
-          customLogoWm,
+          customLogoWm: logoForStamp,
           pos: wmPos,
         }) : files[i];
       } catch {
@@ -1448,7 +1482,7 @@ export const AdminProducts: React.FC = () => {
                     logoText={agLogoText}
                     logoColorLeft={agLogoColorLeft}
                     logoColorRight={agLogoColorRight}
-                    customLogoWm={customLogoWm}
+                    customLogoWm={resolvedLogoWm}
                   />
                   <button
                     type="button"
@@ -1592,25 +1626,32 @@ export const AdminProducts: React.FC = () => {
                               e.target.value = '';
                             }}
                           />
-                          {customLogoWm.imageDataUrl ? (
+                          {resolvedLogoWm.imageDataUrl ? (
                             <div className="flex items-center gap-3 w-full">
                               <img
-                                src={customLogoWm.imageDataUrl}
-                                alt="Uploaded logo"
+                                src={resolvedLogoWm.imageDataUrl}
+                                alt={usingBrandLogo ? 'Brand logo' : 'Uploaded logo'}
                                 className="h-10 w-auto max-w-[80px] object-contain rounded"
                                 style={{ background: 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 0 0 / 10px 10px' }}
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] text-charcoal font-medium truncate">Logo uploaded ✓</p>
-                                <p className="text-[10px] text-[#6B5B55]">Click to replace</p>
+                                <p className="text-[11px] text-charcoal font-medium truncate">
+                                  {usingBrandLogo ? 'Brand logo (site favicon) ✓' : 'Logo uploaded ✓'}
+                                </p>
+                                <p className="text-[10px] text-[#6B5B55]">
+                                  {usingBrandLogo ? 'Click to upload a different logo' : 'Click to replace'}
+                                </p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={e => { e.stopPropagation(); updateCustomLogoWm({ imageDataUrl: '', enabled: false }); }}
-                                className="ml-auto text-[10px] text-red-400 hover:text-red-600 transition-colors shrink-0"
-                              >
-                                Remove
-                              </button>
+                              {!usingBrandLogo && (
+                                <button
+                                  type="button"
+                                  onClick={e => { e.stopPropagation(); updateCustomLogoWm({ imageDataUrl: '', enabled: true }); }}
+                                  className="ml-auto text-[10px] text-[#6B5B55] hover:text-rose-gold underline transition-colors shrink-0"
+                                  title="Drop the upload and stamp the site favicon instead"
+                                >
+                                  Use brand logo
+                                </button>
+                              )}
                             </div>
                           ) : (
                             <>
@@ -1624,10 +1665,12 @@ export const AdminProducts: React.FC = () => {
                         </div>
 
                         {/* Toggle: Use Uploaded Logo vs AG Text Logo */}
-                        {customLogoWm.imageDataUrl && (
+                        {resolvedLogoWm.imageDataUrl && (
                           <div className="flex items-center gap-2 bg-white/60 rounded-lg px-3 py-2 border border-blush/20">
                             <span className="text-[11px] text-[#6B5B55] flex-1">
-                              {customLogoWm.enabled ? '🖼 Using uploaded logo' : '🔤 Using AG text logo'}
+                              {customLogoWm.enabled
+                                ? (usingBrandLogo ? '🖼 Using brand logo' : '🖼 Using uploaded logo')
+                                : '🔤 Using AG text logo'}
                             </span>
                             <div className="flex items-center gap-1.5">
                               <button
@@ -1642,14 +1685,14 @@ export const AdminProducts: React.FC = () => {
                                 onClick={() => updateCustomLogoWm({ enabled: true })}
                                 className={`text-[10px] px-2 py-1 rounded-md transition-colors ${customLogoWm.enabled ? 'bg-rose-gold text-white' : 'text-[#6B5B55] hover:bg-blush/40'}`}
                               >
-                                Uploaded Logo
+                                {usingBrandLogo ? 'Brand Logo' : 'Uploaded Logo'}
                               </button>
                             </div>
                           </div>
                         )}
 
                         {/* Controls — only shown when custom logo is active */}
-                        {customLogoWm.enabled && customLogoWm.imageDataUrl && (
+                        {customLogoWm.enabled && resolvedLogoWm.imageDataUrl && (
                           <div className="space-y-2 bg-white/40 rounded-xl px-3 py-2.5 border border-blush/20">
                             {/* Logo Size */}
                             <div className="flex items-center gap-3">
@@ -1897,7 +1940,7 @@ export const AdminProducts: React.FC = () => {
                             logoText={agLogoText}
                             logoColorLeft={agLogoColorLeft}
                             logoColorRight={agLogoColorRight}
-                            customLogoWm={customLogoWm}
+                            customLogoWm={resolvedLogoWm}
                           />
                           <button
                             type="button"

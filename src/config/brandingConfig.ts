@@ -221,7 +221,24 @@ export const BRAND = {
         "Shop Shiny Shades — premium destination for elegant western dresses, traditional dresses, tops, and everyday women's fashion. Fast delivery across Bangladesh.",
 
 // ── Assets ────────────────────────────────────────────────
-    logoUrl: '/images/logo.png',
+    /**
+     * One brand mark in three sizes, all the same favicon artwork from /public.
+     * Pick by where it is drawn — the navbar renders a ~40px box, so it must not
+     * pull the 512px file, and the canvas watermark scales its source up, so it
+     * must not pull the 96px one. favicon.svg is skipped everywhere: it only
+     * wraps a base64 PNG, so it costs 343 KB for no extra sharpness.
+     */
+    logo: {
+        /** 96px — navbar, admin sidebar, small UI chips */
+        icon: '/favicon-96x96.png',
+        /** 192px — JSON-LD Organization logo (Google wants ≥112px) and PDFs */
+        standard: '/web-app-manifest-192x192.png',
+        /** 512px — source the canvas watermark draws from */
+        large: '/web-app-manifest-512x512.png',
+    },
+    /** Kept as the schema.org / PDF logo. Was /images/logo.png, which this repo
+     *  has never shipped, so both were resolving to a 404. */
+    logoUrl: '/web-app-manifest-192x192.png',
     faviconUrl: '/favicon.ico',
     /** Single source of truth for OG / Twitter share image */
     ogImage: `https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'nrdmy8ir'}/image/upload/f_auto,q_auto,w_1200,h_630,c_fill/${process.env.NEXT_PUBLIC_CLOUDINARY_OG_FOLDER || 'shinyshades'}/${process.env.NEXT_PUBLIC_CLOUDINARY_OG_FILENAME || 'og-banner.jpg'}`,
