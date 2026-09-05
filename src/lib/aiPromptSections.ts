@@ -32,7 +32,13 @@ export const GLOBAL_SECTION_KEY = 'global.brandVoice';
 /** One row toggles every override off without discarding the text. */
 export const MASTER_KEY = '_master';
 
-export const MAX_PROMPT_CHARS = 400;
+/**
+ * Per-section input cap. Deliberately generous: measured against a real
+ * request the owner's text is the cheap part — the built-in product prompt is
+ * ~1370 characters on its own, and the 1024px image sent beside it costs
+ * several times more tokens than anything written here.
+ */
+export const MAX_PROMPT_CHARS = 1200;
 
 export const GLOBAL_PREFIX = 'Brand voice, apply this to every field:';
 
@@ -219,12 +225,17 @@ export const GROUP_BY_ROUTE: Record<PromptRouteId, PromptGroup> = {
  * whole system prompt plus the failed output, and `isRequestFault` makes an
  * over-long prompt stop the credential chain instead of failing over — so this
  * is a hard ceiling, not a style guide.
+ *
+ * Scaled with MAX_PROMPT_CHARS on purpose. A budget below what the sections in
+ * a group can hold is exactly what makes `resolvePromptTexts` start dropping,
+ * so raising one without the other would silently cost the owner whichever
+ * sections sit furthest down the catalog.
  */
 export const ROUTE_BUDGETS: Record<PromptGroup, number> = {
   global: 0,
-  product: 1200,
-  category: 900,
-  chat: 700,
+  product: 3600,
+  category: 2700,
+  chat: 2100,
 };
 
 export type OverrideGetter = (key: string) => string | undefined;

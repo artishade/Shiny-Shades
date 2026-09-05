@@ -189,7 +189,7 @@ const AdminAiPromptsPage: NextPageWithLayout = () => {
         <p className="text-[11px] text-[#6B5B55]/80 mb-2">{section.hint}</p>
 
         <Textarea
-          rows={3}
+          rows={6}
           value={value}
           maxLength={MAX_PROMPT_CHARS}
           placeholder={section.builtIn || section.example || ''}
