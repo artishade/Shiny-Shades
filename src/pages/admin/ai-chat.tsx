@@ -9,6 +9,9 @@
    chip to /api/ai-category-draft. Both are generate-only: the reply is an
    editable card, and the write happens from the card on an explicit click.
 
+   Photos can be dropped anywhere on the page as well as picked from the
+   composer; both paths go through addFiles, so the cap is enforced once.
+
    Assistant text is rendered as a plain text child. Model output is untrusted,
    so there is no markdown renderer and no dangerouslySetInnerHTML here.
    =================================================== */
@@ -17,7 +20,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactEle
 import { AdminAuthLayout } from '@/components/layout/AdminAuthLayout';
 import { Button } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
-import { ImagePlus, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { ImagePlus, Send, Sparkles, Trash2, UploadCloud, X } from 'lucide-react';
 import {
   ProductDraftCard,
   type ProductDraftData,
@@ -166,8 +169,12 @@ const AdminAiChatPage: NextPageWithLayout = () => {
   const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
   const [pendingLabel, setPendingLabel] = useState('');
   const [error, setError] = useState('');
+  const [dragActive, setDragActive] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // dragenter/dragleave fire once per element the cursor crosses, so the overlay
+  // is driven by a depth counter rather than by the raw events.
+  const dragDepth = useRef(0);
 
   // The draft cards need the category list, and this page never loaded it.
   useEffect(() => {
@@ -183,19 +190,92 @@ const AdminAiChatPage: NextPageWithLayout = () => {
 
   const hasImages = attachments.length > 0;
 
-  const pickFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(event.target.files || []).filter((f) => f.type.startsWith('image/'));
-    event.target.value = '';
-    if (!picked.length) return;
+  /**
+   * The one place attachments are added, from either the picker or a drop.
+   * A dropped non-image is called out instead of silently skipped, because a
+   * dropped PDF is otherwise indistinguishable from the page ignoring the drop.
+   */
+  const addFiles = useCallback(
+    (incoming: File[]) => {
+      if (!incoming.length) return;
 
-    const next = [...attachments, ...picked];
-    setError(
-      next.length > MAX_ATTACHMENTS
-        ? `At most ${MAX_ATTACHMENTS} photos per message — the extras were dropped.`
-        : '',
-    );
-    setAttachments(next.slice(0, MAX_ATTACHMENTS));
+      const images = incoming.filter((file) => file.type.startsWith('image/'));
+      if (!images.length) {
+        setError('Only image files can be attached.');
+        return;
+      }
+
+      const next = [...attachments, ...images];
+      setError(
+        next.length > MAX_ATTACHMENTS
+          ? `At most ${MAX_ATTACHMENTS} photos per message — the extras were dropped.`
+          : '',
+      );
+      setAttachments(next.slice(0, MAX_ATTACHMENTS));
+    },
+    [attachments],
+  );
+
+  const pickFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(event.target.files || []);
+    // Cleared so re-picking the same photo still fires change.
+    event.target.value = '';
+    addFiles(picked);
   };
+
+  /**
+   * The drop target is the whole window, not a box: a fixed zone would sit under
+   * a long transcript or fight the sticky composer. Cancelling dragover is what
+   * makes the drop fire at all — left alone, the browser opens the dropped file
+   * and the transcript, which lives in React state only, is gone.
+   */
+  useEffect(() => {
+    const carriesFiles = (event: DragEvent) =>
+      Array.from(event.dataTransfer?.types || []).includes('Files');
+
+    const onDragEnter = (event: DragEvent) => {
+      if (!carriesFiles(event)) return;
+      dragDepth.current += 1;
+      setDragActive(true);
+    };
+
+    const onDragOver = (event: DragEvent) => {
+      if (!carriesFiles(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    };
+
+    const onDragLeave = (event: DragEvent) => {
+      if (!carriesFiles(event)) return;
+      dragDepth.current = Math.max(0, dragDepth.current - 1);
+      if (!dragDepth.current) setDragActive(false);
+    };
+
+    const onDrop = (event: DragEvent) => {
+      if (!carriesFiles(event)) return;
+      event.preventDefault();
+      dragDepth.current = 0;
+      setDragActive(false);
+      // Refused mid-run rather than queued: the bulk loop reassigns attachments
+      // when it aborts, which would throw these photos away without a word.
+      if (sending) {
+        setError('Still working on the last message. Wait for it to finish, then drop the photos.');
+        return;
+      }
+      addFiles(Array.from(event.dataTransfer?.files || []));
+    };
+
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+    };
+  }, [addFiles, sending]);
 
   const runAsk = async (history: TranscriptItem[]) => {
     const json = await postJson('/api/ai-chat', {
@@ -341,8 +421,9 @@ const AdminAiChatPage: NextPageWithLayout = () => {
             Ask, or draft a product
           </h3>
           <p className="text-[#6B5B55] text-sm mb-5 max-w-lg mx-auto">
-            It reads your orders, products, categories and coupons. Attach photos and type a price
-            to get a full catalog draft you can edit and publish from here.
+            It reads your orders, products, categories and coupons. Attach photos — or drop them
+            anywhere on this page — with a price to get a full catalog draft you can edit and publish
+            from here.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {SUGGESTIONS.map((suggestion) => (
@@ -457,7 +538,7 @@ const AdminAiChatPage: NextPageWithLayout = () => {
               </button>
             </>
           ) : (
-            <span className="text-[11px] text-[#6B5B55]/70">Attach photos to draft a product</span>
+            <span className="text-[11px] text-[#6B5B55]/70">Attach or drop photos to draft a product</span>
           )}
         </div>
         <div className="flex items-end gap-2">
@@ -501,6 +582,25 @@ const AdminAiChatPage: NextPageWithLayout = () => {
           Publish on a draft.
         </p>
       </div>
+
+      {/* Drag feedback only — pointer-events-none keeps the drag events reaching
+          the page underneath, where the window listeners pick them up. */}
+      {dragActive && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 pointer-events-none">
+          <div className="absolute inset-0 bg-charcoal/25 backdrop-blur-sm" />
+          <div className="relative max-w-xs animate-scale-in rounded-2xl border-2 border-dashed border-rose-gold bg-white/95 px-8 py-7 text-center shadow-2xl">
+            <UploadCloud size={38} className="mx-auto mb-3 text-rose-gold" />
+            <p className="text-sm font-medium text-charcoal">
+              {sending ? 'A message is still running' : 'Drop photos to draft a product'}
+            </p>
+            <p className="mt-1 text-xs text-[#6B5B55]">
+              {sending
+                ? 'Wait for it to finish, then drop them.'
+                : `Images only · up to ${MAX_ATTACHMENTS} per message`}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
