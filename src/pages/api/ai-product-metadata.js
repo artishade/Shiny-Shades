@@ -12,14 +12,8 @@
 
 import { requireAdmin } from './_lib/requireAdmin.js';
 import { checkRateLimitStrict } from './_lib/rateLimit.js';
-import {
-    callChatCompletions,
-    callChatCompletionsWithFailover,
-    providerError,
-    readContent,
-    recordCredentialOutcome,
-    resolveCredentialChain,
-} from './_lib/aiCredentials.js';
+import { providerError, recordCredentialOutcome, resolveCredentialChain } from './_lib/aiCredentials.js';
+import { badOutputError, clamp, cleanHint, cleanTags, requestJsonObject } from './_lib/aiJson.js';
 import { SIMPLE_COLOR_NAMES, snapColorNames } from '../../lib/simpleColors';
 
 export const config = {
@@ -30,9 +24,8 @@ export const config = {
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const PROVIDER_TIMEOUT_MS = 20000;
 
-// Two attempts across the chain, leaving room for the JSON retry below.
+// Two attempts across the chain, leaving room for the JSON retry.
 const PROVIDER_BUDGET_MS = 40000;
-const RETRY_TIMEOUT_MS = 15000;
 const DATA_URL_RE = /^data:image\/(png|jpe?g|webp|gif|avif);base64,([A-Za-z0-9+/=\s]+)$/i;
 
 // Cloudinary is the only host this project uploads images to
@@ -53,34 +46,6 @@ const SYSTEM_PROMPT = [
     'Describe only what is visible. Never state sizes, fabric percentages, prices or care instructions.',
 ].join('\n');
 
-const stripTags = (value) =>
-    typeof value === 'string' ? value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-
-/** Clamps to a budget, backing off to a word boundary when one is close. */
-function clamp(value, max) {
-    const text = stripTags(value);
-    if (text.length <= max) return text;
-    const cut = text.slice(0, max);
-    const lastSpace = cut.lastIndexOf(' ');
-    return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trim();
-}
-
-const cleanHint = (value, maxLength) => {
-    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
-    return stripTags(value).slice(0, maxLength);
-};
-
-function cleanTags(values) {
-    if (!Array.isArray(values)) return [];
-    const tags = [];
-    for (const value of values) {
-        const tag = stripTags(value).toLowerCase().replace(/^#+/, '').trim();
-        if (!tag || tag.length > 30) continue;
-        if (!tags.includes(tag) && tags.length < 12) tags.push(tag);
-    }
-    return tags;
-}
-
 function buildUserContent(imageDataUrl, hints) {
     const notes = ['Write the catalog entry for this product.'];
     if (hints.category) notes.push(`Category: ${hints.category}`);
@@ -91,28 +56,6 @@ function buildUserContent(imageDataUrl, hints) {
         { type: 'text', text: notes.join('\n') },
         { type: 'image_url', image_url: { url: imageDataUrl } },
     ];
-}
-
-/** Fenced or prose-wrapped output is common enough to be worth digging out. */
-function parseJsonObject(text) {
-    const unfenced = String(text || '').replace(/```(?:json)?/gi, '').trim();
-    if (!unfenced) return null;
-
-    try {
-        const direct = JSON.parse(unfenced);
-        if (direct && typeof direct === 'object' && !Array.isArray(direct)) return direct;
-    } catch { /* fall through to substring scan */ }
-
-    const start = unfenced.indexOf('{');
-    const end = unfenced.lastIndexOf('}');
-    if (start === -1 || end <= start) return null;
-
-    try {
-        const scanned = JSON.parse(unfenced.slice(start, end + 1));
-        return scanned && typeof scanned === 'object' && !Array.isArray(scanned) ? scanned : null;
-    } catch {
-        return null;
-    }
 }
 
 const fail = (status, code, error) => ({ status, code, error });
@@ -223,48 +166,20 @@ export default async function handler(req, res) {
 
         // A text-only model rejects the image with a 400, which the chain treats
         // as retryable — so a non-vision credential is skipped rather than fatal.
-        const call = await callChatCompletionsWithFailover(
-            chain,
-            { messages, temperature: 0.4, max_tokens: 700 },
-            { timeoutMs: PROVIDER_TIMEOUT_MS, budgetMs: PROVIDER_BUDGET_MS },
-        );
-        await recordCredentialOutcome(auth.supabase, call);
-        if (!call.ok) return providerError(res, call);
+        const result = await requestJsonObject(chain, messages, {
+            temperature: 0.4,
+            maxTokens: 700,
+            timeoutMs: PROVIDER_TIMEOUT_MS,
+            budgetMs: PROVIDER_BUDGET_MS,
+        });
 
-        const cred = call.cred;
-        let parsed = parseJsonObject(readContent(call.json));
-
-        // Exactly one retry, on the provider that already answered — it can see
-        // the image, it just formatted badly. If a model ignores "JSON only"
-        // twice, looping just spends more money on the same answer.
-        if (!parsed) {
-            const retry = await callChatCompletions(
-                cred,
-                {
-                    messages: [
-                        ...messages,
-                        { role: 'assistant', content: readContent(call.json).slice(0, 2000) },
-                        {
-                            role: 'user',
-                            content:
-                                'That was not valid JSON. Reply again with ONE JSON object only — no prose, no code fences.',
-                        },
-                    ],
-                    temperature: 0,
-                    max_tokens: 700,
-                },
-                RETRY_TIMEOUT_MS,
-            );
-            if (!retry.ok) return providerError(res, retry);
-            parsed = parseJsonObject(readContent(retry.json));
+        await recordCredentialOutcome(auth.supabase, result.call);
+        if (!result.ok) {
+            return result.badOutput ? badOutputError(res) : providerError(res, result.call);
         }
 
-        if (!parsed) {
-            return res.status(502).json({
-                error: 'The model did not return usable JSON. Try again, or switch to a stronger model.',
-                code: 'provider_bad_output',
-            });
-        }
+        const parsed = result.parsed;
+        const cred = result.call.cred;
 
         const { colors, dropped } = snapColorNames(parsed.colors, 6);
 
@@ -283,7 +198,7 @@ export default async function handler(req, res) {
                 model: cred.model,
                 credentialLabel: cred.label,
                 droppedColors: dropped,
-                switchedFrom: call.attempts.map((a) => `${a.cred.label} (${a.status})`),
+                switchedFrom: result.call.attempts.map((a) => `${a.cred.label} (${a.status})`),
             },
         });
     } catch (err) {
