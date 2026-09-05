@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from '@/lib/routerCompat';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
-import { useContentStore } from '@/store/contentStore';
+import { usePrerenderedContent, type ContentData } from '@/store/contentStore';
 
 // Falls back to inferring the type from which URL is populated, so older
 // saved banners (created before mediaType existed) still render correctly.
 const getBannerMediaType = (banner: { mediaType?: string; videoUrl?: string; imageUrl?: string }) =>
     banner.mediaType ?? (banner.videoUrl ? 'video' : banner.imageUrl ? 'image' : 'gradient');
 
-export const BannerSlider: React.FC = () => {
+export const BannerSlider: React.FC<{ initialContent?: ContentData | null }> = ({
+    initialContent,
+}) => {
     const [current, setCurrent] = useState(0);
-    const { content } = useContentStore();
+    const content = usePrerenderedContent(initialContent);
     const banners = content.banners.filter((b) => b.active);
     const navigate = useNavigate();
 

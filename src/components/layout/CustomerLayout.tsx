@@ -16,7 +16,6 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
 import { useContentStore } from '@/store/contentStore';
-import { useLoadingStore } from '@/store/useLoadingStore';
 
 // ─── Canonical origin (strip trailing slash once) ────────────────────────────
 
@@ -131,13 +130,9 @@ DefaultSEO.displayName = 'DefaultSEO';
 
 export const CustomerLayout = memo(({ children }: { children: ReactNode }) => {
   const announcement = useContentStore((s) => s.content.announcement);
-  const isLoading = useLoadingStore((s) => s.isLoading);
 
   const barVisible =
     announcement?.enabled && announcement?.messages?.some((m: string) => m?.trim());
-
-  // Avoid rendering shell before loading finishes — prevents CLS
-  if (isLoading) return <>{children}</>;
 
   return (
     <>

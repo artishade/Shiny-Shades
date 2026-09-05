@@ -4,13 +4,18 @@
    Every call goes through /api/ai-credentials with a bearer token; this page
    never touches the ai_credentials table directly, because migration 005
    revokes all browser grants on it. Keys come back masked only.
+
+   The list is a failover chain, not a flat set: order is meaningful, and every
+   provider "in rotation" is tried top to bottom until one answers.
    =================================================== */
 
 import React, { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { AdminAuthLayout } from '@/components/layout/AdminAuthLayout';
 import { Button, Input, Modal, Badge } from '@/components/ui';
 import { supabase } from '@/lib/supabase';
-import { Plus, Edit2, Trash2, Zap, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Plus, Edit2, Trash2, Zap, CheckCircle2, XCircle, ArrowUp, ArrowDown,
+} from 'lucide-react';
 import type { NextPageWithLayout } from '@/types/layout';
 
 interface Credential {
@@ -21,6 +26,10 @@ interface Credential {
   isActive: boolean;
   keyMasked: string;
   lastUsedAt: string | null;
+  priority: number;
+  lastStatus: number | null;
+  lastError: string | null;
+  lastErrorAt: string | null;
 }
 
 interface TestResult {
@@ -30,9 +39,12 @@ interface TestResult {
 
 const emptyForm = { label: '', baseUrl: '', model: '', apiKey: '' };
 
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '');
+
 const AdminApiKeysPage: NextPageWithLayout = () => {
   const [creds, setCreds] = useState<Credential[]>([]);
   const [envFallback, setEnvFallback] = useState(false);
+  const [failoverReady, setFailoverReady] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -59,19 +71,23 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
     return json;
   }, []);
 
+  const apply = useCallback((json: { credentials?: Credential[]; envFallback?: boolean; failoverReady?: boolean }) => {
+    setCreds(json.credentials || []);
+    setEnvFallback(!!json.envFallback);
+    setFailoverReady(json.failoverReady !== false);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const json = await request();
-      setCreds(json.credentials || []);
-      setEnvFallback(!!json.envFallback);
+      apply(await request());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load credentials.');
     } finally {
       setLoading(false);
     }
-  }, [request]);
+  }, [request, apply]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -106,14 +122,41 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
     }
   };
 
-  const setActive = async (id: string) => {
-    setBusyId(id);
+  const toggleRotation = async (cred: Credential) => {
+    setBusyId(cred.id);
     setError('');
     try {
-      await request('', { method: 'PATCH', body: JSON.stringify({ id, isActive: true }) });
+      await request('', {
+        method: 'PATCH',
+        body: JSON.stringify({ id: cred.id, isActive: !cred.isActive }),
+      });
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not activate.');
+      setError(err instanceof Error ? err.message : 'Could not update rotation.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // The whole order is posted, not a single move, so the server can rewrite
+  // every priority in one pass.
+  const move = async (index: number, delta: number) => {
+    const next = [...creds];
+    const target = index + delta;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+
+    setCreds(next);
+    setBusyId(creds[index].id);
+    setError('');
+    try {
+      apply(await request('', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'reorder', ids: next.map((c) => c.id) }),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not reorder.');
+      await load();
     } finally {
       setBusyId(null);
     }
@@ -150,8 +193,14 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
       }));
     } finally {
       setTestingId(null);
+      // The server recorded the outcome, so the stored error line is now stale.
+      try { apply(await request()); } catch { /* the inline result already says enough */ }
     }
   };
+
+  let rank = 0;
+  const rows = creds.map((cred) => ({ cred, rank: cred.isActive ? (rank += 1) : 0 }));
+  const nothingInRotation = !loading && !creds.some((c) => c.isActive);
 
   return (
     <div>
@@ -159,7 +208,11 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
         <div>
           <h1 className="heading-serif text-2xl md:text-3xl font-bold text-charcoal">API Keys</h1>
           <p className="text-[#6B5B55] text-sm">
-            OpenAI-compatible endpoints used for product AI autofill
+            OpenAI-compatible endpoints for product autofill and AI chat
+          </p>
+          <p className="text-[#6B5B55]/70 text-xs mt-1">
+            Providers in rotation are tried top to bottom. If one errors, times out or runs out of
+            quota, the next one takes over automatically.
           </p>
         </div>
         <Button onClick={openAdd}>
@@ -173,10 +226,26 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
         </div>
       )}
 
-      {envFallback && !creds.some((c) => c.isActive) && (
+      {!failoverReady && creds.length > 0 && (
         <div className="mb-4 p-3 rounded-xl bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
-          No active credential here, but AI_BASE_URL / AI_API_KEY / AI_MODEL are set on the
-          server — autofill will use those environment variables.
+          Run <code>supabase/migrations/006_ai_credentials_failover.sql</code> in the Supabase SQL
+          editor to enable ordering and error tracking. Until then only one provider can be in
+          rotation at a time.
+        </div>
+      )}
+
+      {nothingInRotation && (
+        <div className="mb-4 p-3 rounded-xl bg-yellow-50 border border-yellow-200 text-sm text-yellow-800">
+          {envFallback
+            ? 'No provider is in rotation, but AI_BASE_URL / AI_API_KEY / AI_MODEL are set on the server — those will be used.'
+            : 'No provider is in rotation. AI autofill and AI chat will fail until you add one.'}
+        </div>
+      )}
+
+      {envFallback && !nothingInRotation && (
+        <div className="mb-4 p-3 rounded-xl bg-blush-light/40 border border-blush/30 text-sm text-[#6B5B55]">
+          The server also has AI_BASE_URL / AI_API_KEY / AI_MODEL set, so those sit at the end of
+          the chain as a last resort.
         </div>
       )}
 
@@ -189,7 +258,8 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
           </h3>
           <p className="text-[#6B5B55] text-sm mb-4">
             Add an OpenAI-compatible endpoint — OpenRouter, Groq, DeepSeek, OpenAI or a local
-            server. The key is stored server-side and never sent back to this page.
+            server. The key is stored server-side and never sent back to this page. Add two or
+            three and one running out of quota stops mattering.
           </p>
           <Button onClick={openAdd}>
             <Plus size={16} /> Add Credential
@@ -197,37 +267,74 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {creds.map((cred) => {
+          {rows.map(({ cred, rank: position }, index) => {
             const result = testResults[cred.id];
             return (
               <div key={cred.id} className="glass-card rounded-2xl p-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-charcoal truncate">{cred.label}</h3>
-                      {cred.isActive && <Badge variant="success">Active</Badge>}
-                    </div>
-                    <p className="text-xs text-[#6B5B55] break-all">
-                      {cred.baseUrl} · {cred.model} · key {cred.keyMasked}
-                    </p>
-                    {cred.lastUsedAt && (
-                      <p className="text-xs text-[#6B5B55]/70 mt-0.5">
-                        Last used {new Date(cred.lastUsedAt).toLocaleString()}
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span
+                      className={`mt-0.5 w-7 h-7 flex-shrink-0 rounded-full text-xs font-semibold flex items-center justify-center ${
+                        position
+                          ? 'bg-rose-gold text-white'
+                          : 'bg-blush-light/60 text-[#6B5B55]'
+                      }`}
+                      title={position ? `Tried ${position === 1 ? 'first' : `#${position}`}` : 'Not in rotation'}
+                    >
+                      {position ? `#${position}` : '–'}
+                    </span>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-charcoal truncate">{cred.label}</h3>
+                        {cred.isActive
+                          ? <Badge variant="success">in rotation</Badge>
+                          : <Badge variant="default">standby</Badge>}
+                      </div>
+                      <p className="text-xs text-[#6B5B55] break-all">
+                        {cred.baseUrl} · {cred.model} · key {cred.keyMasked}
                       </p>
-                    )}
+                      {cred.lastUsedAt && (
+                        <p className="text-xs text-[#6B5B55]/70 mt-0.5">
+                          Last used {when(cred.lastUsedAt)}
+                        </p>
+                      )}
+                      {cred.lastError && (
+                        <p className="text-xs text-red-600 mt-0.5 break-all">
+                          {cred.lastStatus ? `${cred.lastStatus} · ` : ''}{cred.lastError}
+                          {cred.lastErrorAt ? ` · ${when(cred.lastErrorAt)}` : ''}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {!cred.isActive && (
+                    <div className="flex items-center">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => setActive(cred.id)}
-                        loading={busyId === cred.id}
+                        variant="ghost"
+                        onClick={() => move(index, -1)}
+                        disabled={index === 0 || !failoverReady}
                       >
-                        Set Active
+                        <ArrowUp size={14} />
                       </Button>
-                    )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => move(index, 1)}
+                        disabled={index === rows.length - 1 || !failoverReady}
+                      >
+                        <ArrowDown size={14} />
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleRotation(cred)}
+                      loading={busyId === cred.id}
+                    >
+                      {cred.isActive ? 'Pause' : 'Use'}
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -302,7 +409,8 @@ const AdminApiKeysPage: NextPageWithLayout = () => {
 
           <p className="text-xs text-[#6B5B55]">
             Base URL is the root that serves <code>/chat/completions</code> — usually ending in{' '}
-            <code>/v1</code>. Use a vision-capable model; the product image is sent to it.
+            <code>/v1</code>. A vision-capable model is needed for product autofill; a text-only
+            provider still works for AI chat and is skipped automatically when an image is sent.
           </p>
 
           <div className="flex gap-3 pt-2">

@@ -12,6 +12,7 @@ import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import React, { useEffect, memo } from 'react';
 import { Link } from '@/lib/routerCompat';
 import Head from 'next/head';
+import type { GetStaticProps } from 'next';
 
 import {
   Hero,
@@ -22,12 +23,15 @@ import {
 } from '@/components/home';
 import { FadeIn, SectionHeader, PriceDisplay } from '@/components/ui';
 import { useProductStore } from '@/store';
+import { rowToProduct } from '@/store/productStore';
+import { rowToCategory } from '@/store/categoryStore';
 import { useRecentlyViewedStore } from '@/store/uiStore';
 import { getOptimizedImageUrl, getResponsiveSrcSet } from '@/lib/cloudinary';
 import { siteConfig, SITE } from '@/config/siteConfig';
 import { BRAND } from '@/config/brandingConfig';
 import { CONTACT } from '@/config/contactConfig';
-import { useContentStore } from '@/store/contentStore';
+import { usePrerenderedContent, mergeWithDefaults, CONTENT_ROW_ID } from '@/store/contentStore';
+import type { PageInitialData } from '@/types/layout';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -338,10 +342,14 @@ RecentlyViewedProducts.displayName = 'RecentlyViewedProducts';
 
 // ─── Home page ────────────────────────────────────────────────────────────────
 
-export const HomePage: React.FC = () => {
+export const HomePage: React.FC<PageInitialData> = ({
+  initialContent,
+  initialCategories,
+  initialProducts,
+}) => {
   // Admin → Content → SEO Settings values win; fall back to the source defaults
   // below only when the panel field is still empty.
-  const siteSettings = useContentStore((s) => s.content.siteSettings);
+  const { siteSettings } = usePrerenderedContent(initialContent);
   const pageTitle = siteSettings.defaultTitle?.trim() || PAGE_TITLE;
   const pageDescription = siteSettings.defaultDescription?.trim() || PAGE_DESCRIPTION;
   const pageKeywords = siteSettings.keywords?.length
@@ -448,11 +456,11 @@ export const HomePage: React.FC = () => {
           6. RecentlyViewedProducts — personalised; lazy-loaded images only
       */}
       <main id="main-content">
-        <Hero />
-        <BannerSlider />
-        <TrendingProducts />
-        <FeaturedCollection />
-        <CategoryShowcase />
+        <Hero initialContent={initialContent} />
+        <BannerSlider initialContent={initialContent} />
+        <TrendingProducts initialProducts={initialProducts} initialContent={initialContent} />
+        <FeaturedCollection initialProducts={initialProducts} initialContent={initialContent} />
+        <CategoryShowcase initialCategories={initialCategories} initialProducts={initialProducts} />
         <RecentlyViewedProducts />
       </main>
     </>
@@ -461,6 +469,51 @@ export const HomePage: React.FC = () => {
 
 HomePage.getLayout = function getLayout(page: React.ReactElement) {
   return <CustomerLayout>{page}</CustomerLayout>;
+};
+
+// ─── ISR ──────────────────────────────────────────────────────────────────────
+// Content, categories and products are baked into the HTML so the first paint
+// is the real store instead of an empty shell. _app pushes these into the
+// zustand stores before any child renders; see hydrateStores in _app.tsx.
+
+/**
+ * Prefers the service-role key so builds bypass RLS; falls back to anon.
+ * Lazily `require`'d so it never reaches the browser bundle.
+ */
+const getServerSupabase = () => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  if (!url || !key) return null;
+  const { createClient } = require('@supabase/supabase-js');
+  return createClient(url, key, { auth: { persistSession: false } });
+};
+
+const REVALIDATE_SECONDS = 60;
+
+export const getStaticProps: GetStaticProps<PageInitialData> = async () => {
+  const sb = getServerSupabase();
+  if (!sb) return { props: {}, revalidate: REVALIDATE_SECONDS };
+
+  try {
+    const [contentRes, categoryRes, productRes] = await Promise.all([
+      sb.from('site_content').select('content').eq('id', CONTENT_ROW_ID).maybeSingle(),
+      sb.from('categories').select('*').order('created_at', { ascending: true }),
+      sb.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+    ]);
+
+    const props: PageInitialData = {
+      initialContent: contentRes.data?.content ? mergeWithDefaults(contentRes.data.content) : null,
+      initialCategories: (categoryRes.data ?? []).map(rowToCategory),
+      initialProducts: (productRes.data ?? []).map(rowToProduct),
+    };
+
+    // Next refuses `undefined` in props — rowToProduct leaves comparePrice undefined.
+    return { props: JSON.parse(JSON.stringify(props)), revalidate: REVALIDATE_SECONDS };
+  } catch (err) {
+    console.error('[Home getStaticProps]', err);
+    return { props: {}, revalidate: REVALIDATE_SECONDS };
+  }
 };
 
 export default HomePage;

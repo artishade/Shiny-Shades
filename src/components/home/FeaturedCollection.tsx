@@ -2,19 +2,31 @@ import React, { useEffect } from 'react';
 import { useNavigate } from '@/lib/routerCompat';
 import { ArrowRight } from 'lucide-react';
 import { FadeIn, SectionHeader, PriceDisplay, Badge, Button } from '@/components/ui';
-import { useProductStore } from '@/store';
-import { useContentStore } from '@/store/contentStore';
+import { useProductStore, usePrerenderedProducts } from '@/store/productStore';
+import { usePrerenderedContent, type ContentData } from '@/store/contentStore';
 import { getOptimizedImageUrl } from '@/lib/cloudinary';
 import { BRAND } from '@/config/brandingConfig';
+import type { Product } from '@/types';
 
-export const FeaturedCollection: React.FC = () => {
-    const { products, fetchProducts } = useProductStore();
-    const { content } = useContentStore();
+interface FeaturedCollectionProps {
+    initialProducts?: Product[];
+    initialContent?: ContentData | null;
+}
+
+export const FeaturedCollection: React.FC<FeaturedCollectionProps> = ({
+    initialProducts,
+    initialContent,
+}) => {
+    const fetchProducts = useProductStore((s) => s.fetchProducts);
+    const { products, ready } = usePrerenderedProducts(initialProducts);
+    const content = usePrerenderedContent(initialContent);
     const navigate = useNavigate();
 
-    useEffect(() => { fetchProducts(); }, []);
+    useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
     const featured = products.filter((p) => p.isFeatured);
+
+    if (!ready) return null;
 
     return (
         <section className="py-6 md:py-8" style={{ backgroundColor: BRAND.colors.softBg }}>

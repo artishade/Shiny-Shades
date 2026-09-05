@@ -2,15 +2,25 @@ import React, { useEffect } from 'react';
 import { useNavigate } from '@/lib/routerCompat';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { FadeIn, SectionHeader, PriceDisplay, Badge, Button } from '@/components/ui';
-import { useProductStore } from '@/store';
-import { useContentStore } from '@/store/contentStore';
+import { useProductStore, usePrerenderedProducts } from '@/store/productStore';
+import { usePrerenderedContent, type ContentData } from '@/store/contentStore';
 import { useAutoScroll } from './useAutoScroll';
 import { getOptimizedImageUrl } from '@/lib/cloudinary';
 import { BRAND } from '@/config/brandingConfig';
+import type { Product } from '@/types';
 
-export const TrendingProducts: React.FC = () => {
-    const { products, fetchProducts } = useProductStore();
-    const { content } = useContentStore();
+interface TrendingProductsProps {
+    initialProducts?: Product[];
+    initialContent?: ContentData | null;
+}
+
+export const TrendingProducts: React.FC<TrendingProductsProps> = ({
+    initialProducts,
+    initialContent,
+}) => {
+    const fetchProducts = useProductStore((s) => s.fetchProducts);
+    const { products, ready } = usePrerenderedProducts(initialProducts);
+    const content = usePrerenderedContent(initialContent);
     const navigate = useNavigate();
 
     const CARD_WIDTH = 280 + 20;
@@ -24,7 +34,9 @@ export const TrendingProducts: React.FC = () => {
         false
     );
 
-    useEffect(() => { fetchProducts(); }, []);
+    useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+    if (!ready) return null;
 
     return (
         <section className="py-4 md:py-6 overflow-hidden" style={{ backgroundColor: BRAND.colors.blushLight }}>

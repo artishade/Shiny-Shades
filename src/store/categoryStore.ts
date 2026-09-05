@@ -4,7 +4,7 @@ import type { Category } from '@/types';
 
 // ─── Row ↔ Domain ─────────────────────────────────────────────────────────────
 
-function rowToCategory(row: Record<string, unknown>): Category {
+export function rowToCategory(row: Record<string, unknown>): Category {
   return {
     id: String(row.id),
     name: String(row.name ?? ''),
@@ -274,3 +274,17 @@ export const useCategoryStore = create<CategoryStore>()((set, get) => ({
   getTopLevelCategories: () => get().categories.filter((c) => !c.parentId),
   getSubcategories: (parentId) => get().categories.filter((c) => c.parentId === parentId),
 }));
+
+// ─── Prerender bridge ─────────────────────────────────────────────────────────
+
+/** Categories from getStaticProps until the client store has fetched — see usePrerenderedContent. */
+export function usePrerenderedCategories(initial?: Category[]): {
+  categories: Category[];
+  ready: boolean;
+} {
+  const categories = useCategoryStore((s) => s.categories);
+  const hasFetched = useCategoryStore((s) => s.hasFetched);
+  if (hasFetched) return { categories, ready: true };
+  const seed = initial ?? [];
+  return { categories: seed, ready: seed.length > 0 };
+}

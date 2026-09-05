@@ -44,7 +44,7 @@ src/
 │   ├── home/             # Hero, BannerSlider, CategoryShowcase, FeaturedCollection, TrendingProducts, NewArrivals, ProductCard
 │   ├── shop/             # ProductFilter, ShopCategoryMarquee
 │   ├── admin/            # ImageCropperModal, OrderPdfModal, PdfSettingsPanel, CouponsInventoryReportsShared
-│   ├── ui/               # Shared UI primitives (Button, FadeIn, SectionHeader, PriceDisplay, FullScreenLoader)
+│   ├── ui/               # Shared UI primitives (Button, FadeIn, SectionHeader, PriceDisplay)
 │   └── SEO.tsx           # Per-page <Head> wrapper
 │
 ├── store/                # Zustand stores (see Architecture)

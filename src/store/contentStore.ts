@@ -5,7 +5,7 @@ import type { HeroLayout, HeroExtraComponent } from '@/lib/heroLayout';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CONTENT_ROW_ID = 'global-content';
+export const CONTENT_ROW_ID = 'global-content';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -233,10 +233,40 @@ export const defaultContent: ContentData = {
   siteSettings: defaultSiteSettings,
 };
 
+/**
+ * Pre-fetch state. Holds no copy of its own so nothing placeholder paints
+ * before Supabase content arrives — `defaultContent` is still the fallback
+ * for DB rows with missing keys, and for installs with no row at all.
+ */
+const blankContent: ContentData = {
+  ...defaultContent,
+
+  heroEnabled: false,
+  heroTitle: '',
+  heroSubtitle: '',
+  heroButtonText: '',
+
+  newArrivalsSection: {
+    ...defaultContent.newArrivalsSection,
+    title: '',
+    subtitle: '',
+    emptyMessage: '',
+  },
+
+  announcement: { ...defaultContent.announcement, enabled: false, messages: [] },
+
+  featuredTitle: '',
+  featuredSubtitle: '',
+  trendingTitle: '',
+  trendingSubtitle: '',
+  newsletterTitle: '',
+  newsletterSubtitle: '',
+};
+
 // ─── Merge helpers ────────────────────────────────────────────────────────────
 
 /** Deep-merge loaded data with defaults so missing keys never cause crashes */
-function mergeWithDefaults(loaded: Partial<ContentData>): ContentData {
+export function mergeWithDefaults(loaded: Partial<ContentData>): ContentData {
   return {
     ...defaultContent,
     ...loaded,
@@ -299,7 +329,7 @@ interface ContentStore {
 // ─── Store implementation ─────────────────────────────────────────────────────
 
 export const useContentStore = create<ContentStore>()((set, get) => ({
-  content: defaultContent,
+  content: blankContent,
   loading: { load: false, save: false },
   hasFetched: false,
   error: null,
@@ -355,7 +385,6 @@ export const useContentStore = create<ContentStore>()((set, get) => ({
         err instanceof Error ? err.message : 'Failed to load content',
       );
       set((s) => ({
-        content: defaultContent,
         loading: { ...s.loading, load: false },
         hasFetched: true,
       }));
@@ -420,3 +449,20 @@ export const useContentStore = create<ContentStore>()((set, get) => ({
   getActiveBanners: (type) =>
     get().content[type].filter((b) => b.active),
 }));
+
+// ─── Prerender bridge ─────────────────────────────────────────────────────────
+
+/**
+ * Prefers content supplied by getStaticProps until the client store has fetched.
+ *
+ * Required because zustand v5 feeds `getInitialState()` to useSyncExternalStore
+ * as the server snapshot: during prerender and during the hydration render the
+ * store always reads as empty, no matter what was written to it. Reading the
+ * prop on that path is what puts real content in the HTML and keeps the
+ * hydration render byte-identical to it.
+ */
+export function usePrerenderedContent(initial?: ContentData | null): ContentData {
+  const content = useContentStore((s) => s.content);
+  const hasFetched = useContentStore((s) => s.hasFetched);
+  return hasFetched ? content : initial ?? content;
+}

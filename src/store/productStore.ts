@@ -50,7 +50,7 @@ export interface ProductError {
 
 // ─── Row → Domain ─────────────────────────────────────────────────────────────
 
-function rowToProduct(item: any): Product {
+export function rowToProduct(item: any): Product {
   return {
     id: item.id,
     name: item.name,
@@ -494,3 +494,17 @@ export const useProductStore = create<ProductStore>()((set, get) => ({
       };
     }),
 }));
+
+// ─── Prerender bridge ─────────────────────────────────────────────────────────
+
+/** Products from getStaticProps until the client store has fetched — see usePrerenderedContent. */
+export function usePrerenderedProducts(initial?: Product[]): {
+  products: Product[];
+  ready: boolean;
+} {
+  const products = useProductStore((s) => s.products);
+  const hasFetched = useProductStore((s) => s.hasFetched);
+  if (hasFetched) return { products, ready: true };
+  const seed = initial ?? [];
+  return { products: seed, ready: seed.length > 0 };
+}

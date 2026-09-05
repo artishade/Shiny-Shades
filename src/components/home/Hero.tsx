@@ -3,12 +3,12 @@ import { useNavigate } from '@/lib/routerCompat';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { useContentStore } from '@/store/contentStore';
+import { usePrerenderedContent, type ContentData } from '@/store/contentStore';
 import { DEFAULT_HERO_LAYOUT, type HeroPosition } from '@/lib/heroLayout';
 
-export const Hero: React.FC = () => {
+export const Hero: React.FC<{ initialContent?: ContentData | null }> = ({ initialContent }) => {
     const navigate = useNavigate();
-    const { content } = useContentStore();
+    const content = usePrerenderedContent(initialContent);
 
     if (!content.heroEnabled) return null;
 

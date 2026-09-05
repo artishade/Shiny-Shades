@@ -5,19 +5,34 @@
  * Everything the model sends back is untrusted input: the response object is
  * rebuilt field by field and clamped here, because the client applies it
  * verbatim into the form.
+ *
+ * The first call walks the credential chain, so a dead key or an exhausted
+ * quota falls through to the next provider.
  */
 
 import { requireAdmin } from './_lib/requireAdmin.js';
 import { checkRateLimitStrict } from './_lib/rateLimit.js';
-import { callChatCompletions, resolveActiveCredential } from './_lib/aiCredentials.js';
+import {
+    callChatCompletions,
+    callChatCompletionsWithFailover,
+    providerError,
+    readContent,
+    recordCredentialOutcome,
+    resolveCredentialChain,
+} from './_lib/aiCredentials.js';
 import { SIMPLE_COLOR_NAMES, snapColorNames } from '../../lib/simpleColors';
 
 export const config = {
     api: { bodyParser: { sizeLimit: '4mb' } },
-    maxDuration: 30,
+    maxDuration: 60,
 };
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const PROVIDER_TIMEOUT_MS = 20000;
+
+// Two attempts across the chain, leaving room for the JSON retry below.
+const PROVIDER_BUDGET_MS = 40000;
+const RETRY_TIMEOUT_MS = 15000;
 const DATA_URL_RE = /^data:image\/(png|jpe?g|webp|gif|avif);base64,([A-Za-z0-9+/=\s]+)$/i;
 
 // Cloudinary is the only host this project uploads images to
@@ -78,16 +93,6 @@ function buildUserContent(imageDataUrl, hints) {
     ];
 }
 
-/** Gateways return either a string or an array of content parts. */
-function readContent(json) {
-    const message = json?.choices?.[0]?.message;
-    if (typeof message?.content === 'string') return message.content;
-    if (Array.isArray(message?.content)) {
-        return message.content.map((part) => (typeof part?.text === 'string' ? part.text : '')).join('');
-    }
-    return '';
-}
-
 /** Fenced or prose-wrapped output is common enough to be worth digging out. */
 function parseJsonObject(text) {
     const unfenced = String(text || '').replace(/```(?:json)?/gi, '').trim();
@@ -111,26 +116,6 @@ function parseJsonObject(text) {
 }
 
 const fail = (status, code, error) => ({ status, code, error });
-
-/** Provider failures are translated once, so every exit carries a stable code. */
-function providerError(res, result) {
-    if (result.status === 401 || result.status === 403) {
-        return res.status(502).json({ error: 'The provider rejected the API key.', code: 'provider_auth' });
-    }
-    if (result.status === 429) {
-        return res.status(429).json({
-            error: 'The provider is rate limiting us. Wait a moment.',
-            code: 'provider_rate_limited',
-        });
-    }
-    if (result.status === 504) {
-        return res.status(504).json({ error: 'The provider timed out.', code: 'provider_timeout' });
-    }
-    return res.status(502).json({
-        error: result.message || 'The provider request failed.',
-        code: 'provider_error',
-    });
-}
 
 async function fetchImageBytes(url) {
     const controller = new AbortController();
@@ -216,8 +201,8 @@ export default async function handler(req, res) {
         const image = await resolveImage(req.body);
         if (image.error) return res.status(image.status).json({ error: image.error, code: image.code });
 
-        const cred = await resolveActiveCredential(auth.supabase);
-        if (!cred) {
+        const chain = await resolveCredentialChain(auth.supabase);
+        if (!chain.length) {
             return res.status(503).json({
                 error: 'No AI credential configured. Add one on the API Keys page.',
                 code: 'no_credentials',
@@ -236,29 +221,42 @@ export default async function handler(req, res) {
             },
         ];
 
-        let result = await callChatCompletions(cred, { messages, temperature: 0.4, max_tokens: 700 });
-        if (!result.ok) return providerError(res, result);
+        // A text-only model rejects the image with a 400, which the chain treats
+        // as retryable — so a non-vision credential is skipped rather than fatal.
+        const call = await callChatCompletionsWithFailover(
+            chain,
+            { messages, temperature: 0.4, max_tokens: 700 },
+            { timeoutMs: PROVIDER_TIMEOUT_MS, budgetMs: PROVIDER_BUDGET_MS },
+        );
+        await recordCredentialOutcome(auth.supabase, call);
+        if (!call.ok) return providerError(res, call);
 
-        let parsed = parseJsonObject(readContent(result.json));
+        const cred = call.cred;
+        let parsed = parseJsonObject(readContent(call.json));
 
-        // Exactly one retry. If a model ignores "JSON only" twice, looping just
-        // spends more money on the same answer.
+        // Exactly one retry, on the provider that already answered — it can see
+        // the image, it just formatted badly. If a model ignores "JSON only"
+        // twice, looping just spends more money on the same answer.
         if (!parsed) {
-            result = await callChatCompletions(cred, {
-                messages: [
-                    ...messages,
-                    { role: 'assistant', content: readContent(result.json).slice(0, 2000) },
-                    {
-                        role: 'user',
-                        content:
-                            'That was not valid JSON. Reply again with ONE JSON object only — no prose, no code fences.',
-                    },
-                ],
-                temperature: 0,
-                max_tokens: 700,
-            });
-            if (!result.ok) return providerError(res, result);
-            parsed = parseJsonObject(readContent(result.json));
+            const retry = await callChatCompletions(
+                cred,
+                {
+                    messages: [
+                        ...messages,
+                        { role: 'assistant', content: readContent(call.json).slice(0, 2000) },
+                        {
+                            role: 'user',
+                            content:
+                                'That was not valid JSON. Reply again with ONE JSON object only — no prose, no code fences.',
+                        },
+                    ],
+                    temperature: 0,
+                    max_tokens: 700,
+                },
+                RETRY_TIMEOUT_MS,
+            );
+            if (!retry.ok) return providerError(res, retry);
+            parsed = parseJsonObject(readContent(retry.json));
         }
 
         if (!parsed) {
@@ -269,13 +267,6 @@ export default async function handler(req, res) {
         }
 
         const { colors, dropped } = snapColorNames(parsed.colors, 6);
-
-        if (cred.source === 'db' && cred.id) {
-            await auth.supabase
-                .from('ai_credentials')
-                .update({ last_used_at: new Date().toISOString() })
-                .eq('id', cred.id);
-        }
 
         // Built key by key: the model's object is never spread, so an unexpected
         // key cannot reach the form.
@@ -292,6 +283,7 @@ export default async function handler(req, res) {
                 model: cred.model,
                 credentialLabel: cred.label,
                 droppedColors: dropped,
+                switchedFrom: call.attempts.map((a) => `${a.cred.label} (${a.status})`),
             },
         });
     } catch (err) {

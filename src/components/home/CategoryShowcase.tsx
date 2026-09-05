@@ -2,17 +2,26 @@ import React from 'react';
 import { useNavigate } from '@/lib/routerCompat';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { FadeIn, SectionHeader, Button } from '@/components/ui';
-import { useCategoryStore } from '@/store';
+import { usePrerenderedCategories } from '@/store/categoryStore';
 import { useAutoScroll } from './useAutoScroll';
-import { useProductStore } from '@/store';
+import { usePrerenderedProducts } from '@/store/productStore';
 import { BRAND } from '@/config/brandingConfig';
+import type { Category, Product } from '@/types';
 
-export const CategoryShowcase: React.FC = () => {
+interface CategoryShowcaseProps {
+    initialCategories?: Category[];
+    initialProducts?: Product[];
+}
+
+export const CategoryShowcase: React.FC<CategoryShowcaseProps> = ({
+    initialCategories,
+    initialProducts,
+}) => {
     const navigate = useNavigate();
-    const { categories: allCategoriesRaw } = useCategoryStore();
+    const { categories: allCategoriesRaw, ready } = usePrerenderedCategories(initialCategories);
     // Homepage showcase only surfaces top-level categories; subcategories live on the category/all-categories pages
     const categories = allCategoriesRaw.filter(cat => !cat.parentId);
-    const { products } = useProductStore();  // ← add
+    const { products } = usePrerenderedProducts(initialProducts);
 
     // ← add this derived list
     const categoriesWithCount = categories.map(cat => ({
@@ -29,6 +38,8 @@ export const CategoryShowcase: React.FC = () => {
         1.2,
         true
     );
+
+    if (!ready) return null;
 
     return (
         <section className="py-4 md:py-6 overflow-hidden" style={{ backgroundColor: BRAND.colors.blushLight }}>

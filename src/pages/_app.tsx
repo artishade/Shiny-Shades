@@ -9,11 +9,10 @@ import {
 import { useRouter } from 'next/router';
 import '@/index.css';
 
-import type { AppPropsWithLayout } from '@/types/layout';
+import type { AppPropsWithLayout, PageInitialData } from '@/types/layout';
 import { useContentStore } from '@/store/contentStore';
 import { useCategoryStore } from '@/store/categoryStore';
-import { useLoadingStore } from '@/store/useLoadingStore';
-import { FullScreenLoader } from '@/components/ui/FullScreenLoader';
+import { useProductStore } from '@/store/productStore';
 import { trackingConfig } from '@/config/trackingConfig';
 import { trackPageView } from '@/lib/facebookPixel';
 
@@ -115,46 +114,71 @@ function PixelTracker() {
   return null;
 }
 
-// ─── Scroll-to-top + route-change loader ──────────────────────────────────────
+// ─── Scroll-to-top on navigation ──────────────────────────────────────────────
 // Ported from src/App.tsx's <ScrollToTop>.
 
 const ScrollToTop = memo(() => {
   const router = useRouter();
-  const setLoading = useLoadingStore((s) => s.setLoading);
 
   useEffect(() => {
     const handleStart = () => {
       window.scrollTo({ top: 0, behavior: 'instant' });
-      setLoading(true, 50, 'Preparing View…');
-    };
-    const handleComplete = () => {
-      setLoading(false);
     };
 
     router.events.on('routeChangeStart', handleStart);
-    router.events.on('routeChangeComplete', handleComplete);
-    router.events.on('routeChangeError', handleComplete);
 
     return () => {
       router.events.off('routeChangeStart', handleStart);
-      router.events.off('routeChangeComplete', handleComplete);
-      router.events.off('routeChangeError', handleComplete);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, setLoading]);
+  }, [router]);
 
   return null;
 });
 ScrollToTop.displayName = 'ScrollToTop';
 
-// ─── Root boot logic ───────────────────────────────────────────────────────────
-// Ported from src/main.tsx's <Root>: fetch content + categories in parallel,
-// drive the full-screen loader.
+// ─── ISR store hydration ──────────────────────────────────────────────────────
 
-function AppBoot({ children }: { children: ReactNode }) {
+let clientHydrated = false;
+
+/**
+ * Seeds the stores from a page's getStaticProps data on the client, once.
+ *
+ * Runs in an effect, never during render: some components read live state
+ * through getters kept in the store (Navbar's `getSiteSettings()`), which
+ * bypasses the SSR snapshot entirely, so any write before hydration commits
+ * shows up in the hydration render and mismatches the HTML.
+ *
+ * Server renders don't need it — zustand v5 always hands useSyncExternalStore
+ * `getInitialState()` as the server snapshot, so prerendered components read the
+ * ISR props directly (see usePrerenderedContent). This exists so that after
+ * hydration the stores already hold the real data, letting the shell — navbar
+ * logo, categories, announcement bar — fill in without waiting for a fetch.
+ */
+function hydrateStores({ initialContent, initialCategories, initialProducts }: PageInitialData) {
+  if (clientHydrated) return;
+  clientHydrated = true;
+
+  if (initialContent) {
+    useContentStore.setState({ content: initialContent, hasFetched: true });
+  }
+
+  if (initialCategories?.length) {
+    useCategoryStore.setState({ categories: initialCategories, hasFetched: true });
+  }
+
+  // cacheTimestamp stays null so fetchProducts still pulls fresh rows — stock and
+  // prices must not sit on an ISR snapshot for a whole revalidate window.
+  if (initialProducts?.length) {
+    useProductStore.setState({ products: initialProducts, hasFetched: true });
+  }
+}
+
+// ─── Root boot logic ───────────────────────────────────────────────────────────
+// Ported from src/main.tsx's <Root>: fetch content + categories in parallel.
+
+function AppBoot({ pageProps, children }: { pageProps: PageInitialData; children: ReactNode }) {
   const loadContent = useContentStore((s) => s.loadContent);
   const loadCategories = useCategoryStore((s) => s.loadCategories);
-  const setLoading = useLoadingStore((s) => s.setLoading);
 
   const hasFired = useRef(false);
 
@@ -162,33 +186,13 @@ function AppBoot({ children }: { children: ReactNode }) {
     if (hasFired.current) return;
     hasFired.current = true;
 
-    let cancelled = false;
+    // Seed from the ISR payload first — loadContent/loadCategories then no-op.
+    hydrateStores(pageProps);
 
-    const initApp = async () => {
-      setLoading(true, 20, 'Connecting…');
-
-      try {
-        await Promise.all([loadContent(), loadCategories()]);
-        if (cancelled) return;
-
-        await new Promise<void>((resolve) => setTimeout(resolve, 150));
-        if (cancelled) return;
-
-        setLoading(false, 100, 'Ready');
-      } catch (error) {
-        if (cancelled) return;
-        console.error('[AppBoot] initApp failed:', error);
-        setLoading(false);
-      }
-    };
-
-    initApp();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadContent, loadCategories, setLoading]);
+    Promise.all([loadContent(), loadCategories()]).catch((error) => {
+      console.error('[AppBoot] initApp failed:', error);
+    });
+  }, [loadContent, loadCategories, pageProps]);
 
   return <>{children}</>;
 }
@@ -200,9 +204,8 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
   return (
     <ErrorBoundary>
-      <AppBoot>
-        {/* Global overlays — rendered outside the page tree to avoid re-mounts */}
-        <FullScreenLoader />
+      <AppBoot pageProps={pageProps as PageInitialData}>
+        {/* Global side-effects — rendered outside the page tree to avoid re-mounts */}
         <PixelTracker />
         <ScrollToTop />
 

@@ -1,9 +1,13 @@
 /**
- * Admin-managed OpenAI-compatible AI credentials (CRUD + connection test).
+ * Admin-managed OpenAI-compatible AI credentials (CRUD + reorder + test).
  *
  * The plaintext api_key never leaves the server — responses carry a masked
  * form only. ai_credentials has no browser grants at all (migration 005), so
  * this service-role route is the only way in.
+ *
+ * Rows marked active form a failover chain, tried in ascending priority. The
+ * priority and last_error columns arrive with migration 006, so reads use
+ * select('*') and writes that need them map 42703 to a migration hint.
  */
 
 import { requireAdmin } from './_lib/requireAdmin.js';
@@ -13,11 +17,12 @@ import {
     isAllowedBaseUrl,
     maskKey,
     normalizeBaseUrl,
+    recordCredentialOutcome,
     resolveActiveCredential,
 } from './_lib/aiCredentials.js';
 
-const SAFE_COLUMNS = 'id, label, base_url, model, is_active, last_used_at, created_at, updated_at';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_REORDER_IDS = 50;
 
 const toDto = (row) => ({
     id: row.id,
@@ -27,7 +32,16 @@ const toDto = (row) => ({
     isActive: !!row.is_active,
     keyMasked: maskKey(row.api_key),
     lastUsedAt: row.last_used_at,
+    priority: Number(row.priority) || 0,
+    lastStatus: row.last_status ?? null,
+    lastError: row.last_error ?? null,
+    lastErrorAt: row.last_error_at ?? null,
 });
+
+/** Chain order: priority first, then insertion order for the unseeded default. */
+const byChainOrder = (a, b) =>
+    (Number(a.priority) || 0) - (Number(b.priority) || 0) ||
+    String(a.created_at || '').localeCompare(String(b.created_at || ''));
 
 const cleanId = (value) => (UUID_RE.test(String(value ?? '')) ? String(value) : null);
 
@@ -39,6 +53,17 @@ const cleanText = (value, maxLength) => {
 
 const badRequest = (res, error) => res.status(400).json({ error, code: 'bad_request' });
 const BASE_URL_HINT = 'Base URL must start with https:// (or http://localhost).';
+
+// A missing column reads back as 42703 and writes back as PGRST204; 23505 is
+// migration 005's one-active-row index. All three mean the same unrun file.
+const needsMigration = (error) =>
+    error?.code === '42703' || error?.code === 'PGRST204' || error?.code === '23505';
+const migrationRequired = (res) =>
+    res.status(409).json({
+        error:
+            'Run supabase/migrations/006_ai_credentials_failover.sql in the Supabase SQL editor, then try again.',
+        code: 'migration_required',
+    });
 
 export default async function handler(req, res) {
     const auth = await requireAdmin(req, res);
@@ -54,9 +79,9 @@ export default async function handler(req, res) {
     try {
         if (req.method === 'GET') return await listCredentials(supabase, res);
         if (req.method === 'POST') {
-            return req.body?.action === 'test'
-                ? await testCredential(supabase, req, res)
-                : await createCredential(supabase, req, res);
+            if (req.body?.action === 'test') return await testCredential(supabase, req, res);
+            if (req.body?.action === 'reorder') return await reorderCredentials(supabase, req, res);
+            return await createCredential(supabase, req, res);
         }
         if (req.method === 'PATCH') return await updateCredential(supabase, req, res);
         if (req.method === 'DELETE') return await deleteCredential(supabase, req, res);
@@ -70,15 +95,16 @@ export default async function handler(req, res) {
 }
 
 async function listCredentials(supabase, res) {
-    const { data, error } = await supabase
-        .from('ai_credentials')
-        .select(`${SAFE_COLUMNS}, api_key`)
-        .order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('ai_credentials').select('*');
     if (error) throw error;
 
+    const rows = (data || []).slice().sort(byChainOrder);
+
     return res.status(200).json({
-        credentials: (data || []).map(toDto),
+        credentials: rows.map(toDto),
         envFallback: !!(process.env.AI_BASE_URL && process.env.AI_API_KEY && process.env.AI_MODEL),
+        // A missing column simply does not come back from select('*').
+        failoverReady: !rows.length || rows[0].priority !== undefined,
     });
 }
 
@@ -93,16 +119,20 @@ async function createCredential(supabase, req, res) {
     if (!apiKey) return badRequest(res, 'API key is required.');
     if (!isAllowedBaseUrl(baseUrl)) return badRequest(res, BASE_URL_HINT);
 
-    // The very first credential becomes active so the feature works immediately.
-    const { count } = await supabase
-        .from('ai_credentials')
-        .select('id', { count: 'exact', head: true });
+    // New credentials join the chain, at the end: the DEFAULT priority sorts
+    // after every row migration 006 seeded.
+    const row = { label, base_url: baseUrl, model, api_key: apiKey, is_active: true };
+    let { data, error } = await supabase.from('ai_credentials').insert([row]).select('*').single();
 
-    const { data, error } = await supabase
-        .from('ai_credentials')
-        .insert([{ label, base_url: baseUrl, model, api_key: apiKey, is_active: !count }])
-        .select(`${SAFE_COLUMNS}, api_key`)
-        .single();
+    // Migration 005's one-active-row index is still in place, so add it as a
+    // standby instead of refusing.
+    if (error?.code === '23505') {
+        ({ data, error } = await supabase
+            .from('ai_credentials')
+            .insert([{ ...row, is_active: false }])
+            .select('*')
+            .single());
+    }
     if (error) throw error;
 
     return res.status(201).json({ credential: toDto(data) });
@@ -135,29 +165,56 @@ async function updateCredential(supabase, req, res) {
     const apiKey = cleanText(req.body?.apiKey, 500);
     if (apiKey) patch.api_key = apiKey;
 
-    if (req.body?.isActive === true) {
-        // Clear the previous active row first — the partial unique index in
-        // migration 005 permits only one.
-        const { error } = await supabase
-            .from('ai_credentials')
-            .update({ is_active: false, updated_at: patch.updated_at })
-            .neq('id', id);
-        if (error) throw error;
-        patch.is_active = true;
-    } else if (req.body?.isActive === false) {
-        patch.is_active = false;
-    }
+    // Many rows can be in rotation now, so activating one leaves the rest alone.
+    if (req.body?.isActive === true) patch.is_active = true;
+    else if (req.body?.isActive === false) patch.is_active = false;
 
     const { data, error } = await supabase
         .from('ai_credentials')
         .update(patch)
         .eq('id', id)
-        .select(`${SAFE_COLUMNS}, api_key`)
+        .select('*')
         .maybeSingle();
-    if (error) throw error;
+    if (error) {
+        if (needsMigration(error)) return migrationRequired(res);
+        throw error;
+    }
     if (!data) return res.status(404).json({ error: 'Credential not found.', code: 'not_found' });
 
     return res.status(200).json({ credential: toDto(data) });
+}
+
+/**
+ * The client sends the whole list in its new order and priorities are rewritten
+ * from scratch, so a half-finished reorder cannot leave two providers claiming
+ * the same slot.
+ */
+async function reorderCredentials(supabase, req, res) {
+    const raw = Array.isArray(req.body?.ids) ? req.body.ids : null;
+    if (!raw || !raw.length || raw.length > MAX_REORDER_IDS) {
+        return badRequest(res, 'Send an ids array in the new order.');
+    }
+
+    const ids = [];
+    for (const value of raw) {
+        const id = cleanId(value);
+        if (!id || ids.includes(id)) return badRequest(res, 'ids must be unique credential ids.');
+        ids.push(id);
+    }
+
+    const updatedAt = new Date().toISOString();
+    for (let i = 0; i < ids.length; i += 1) {
+        const { error } = await supabase
+            .from('ai_credentials')
+            .update({ priority: (i + 1) * 10, updated_at: updatedAt })
+            .eq('id', ids[i]);
+        if (error) {
+            if (needsMigration(error)) return migrationRequired(res);
+            throw error;
+        }
+    }
+
+    return await listCredentials(supabase, res);
 }
 
 async function deleteCredential(supabase, req, res) {
@@ -171,8 +228,13 @@ async function deleteCredential(supabase, req, res) {
 }
 
 /**
- * One cheap text-only completion. Without this a wrong base URL or a missing
- * /v1 segment is undebuggable, so the provider's own message is passed through.
+ * One cheap text-only completion, against exactly the credential asked for —
+ * no failover, or the test would report on the wrong provider. Without this a
+ * wrong base URL or a missing /v1 segment is undebuggable, so the provider's
+ * own message is passed through.
+ *
+ * The result is recorded, so testing a provider also refreshes or clears the
+ * stale error the API Keys page shows for it.
  */
 async function testCredential(supabase, req, res) {
     const id = cleanId(req.body?.id);
@@ -181,16 +243,18 @@ async function testCredential(supabase, req, res) {
     if (id) {
         const { data, error } = await supabase
             .from('ai_credentials')
-            .select('label, base_url, model, api_key')
+            .select('id, label, base_url, model, api_key')
             .eq('id', id)
             .maybeSingle();
         if (error) throw error;
         if (!data) return res.status(404).json({ error: 'Credential not found.', code: 'not_found' });
         cred = {
+            id: data.id,
             label: data.label,
             baseUrl: normalizeBaseUrl(data.base_url),
             model: data.model,
             apiKey: data.api_key,
+            source: 'db',
         };
     } else {
         cred = await resolveActiveCredential(supabase);
@@ -205,6 +269,14 @@ async function testCredential(supabase, req, res) {
         { messages: [{ role: 'user', content: 'ping' }], max_tokens: 1 },
         15000,
     );
+
+    await recordCredentialOutcome(supabase, {
+        ok: result.ok,
+        cred,
+        attempts: result.ok
+            ? []
+            : [{ cred, status: result.status, message: String(result.message || '').slice(0, 300) }],
+    });
 
     return res.status(200).json({
         ok: result.ok,

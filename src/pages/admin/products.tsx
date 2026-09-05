@@ -1184,11 +1184,13 @@ export const AdminProducts: React.FC = () => {
       applyAiResult(json.data || {}, force);
 
       const dropped: string[] = json.meta?.droppedColors || [];
+      const switchedFrom: string[] = json.meta?.switchedFrom || [];
       const parts = [
         `${(json.data?.tags || []).length} tags`,
         `${(json.data?.colors || []).length} colors`,
       ];
       if (dropped.length) parts.push(`dropped ${dropped.join(', ')}`);
+      if (switchedFrom.length) parts.push(`switched after ${switchedFrom.join(', ')} failed`);
       setAiNote(
         `Filled ${force ? 'all AI fields' : 'empty fields'} using ${json.meta?.model || 'AI'} · ${parts.join(' · ')}`
       );
