@@ -24,6 +24,7 @@ import {
     resolveCredentialChain,
 } from './_lib/aiCredentials.js';
 import { buildStoreSnapshot, serializeSnapshot } from './_lib/storeSnapshot.js';
+import { loadPromptTexts } from './_lib/aiPrompts.js';
 
 export const config = { maxDuration: 60 };
 
@@ -37,13 +38,17 @@ const PROVIDER_TIMEOUT_MS = 20000;
 // Two full attempts plus the snapshot queries, under maxDuration.
 const PROVIDER_BUDGET_MS = 45000;
 
-const RULES = [
+// Machine-owned. The plain-text line is load-bearing: the chat renders the
+// reply as a plain text child, with no markdown renderer.
+const IDENTITY = [
     "You are the data analyst for Shiny Shades, an online women's fashion store in Bangladesh.",
     'You are talking to the owner. Currency is BDT, written as Taka or ৳.',
     'Reply in plain text only — no markdown, no asterisks, no tables, no code fences. The chat window renders raw text.',
-    'Answer in whatever language the owner writes in, including Banglish.',
-    'Be short and concrete. Lead with the number, then one or two lines of what it means and what to do about it.',
-    '',
+].join('\n');
+
+// Sent after the owner's tone lines, so no wording on /admin/ai-prompts can
+// talk the model out of them.
+const HONESTY = [
     'HONESTY RULES, these override everything else:',
     '- The STORE SNAPSHOT below is your only source of data. Never state a number that is not in it or arithmetic on it.',
     '- Never fill a gap with an industry benchmark, an estimate or a guess. If the snapshot cannot answer, say exactly which data the store does not record, then suggest where the owner could get it.',
@@ -51,8 +56,11 @@ const RULES = [
     '- When a caveat affects your answer, state it in one short clause. The caveats are: cancelled orders are excluded from revenue; shipping is derived arithmetic, not a stored column; product ratings and review counts are always 0 because there is no review feature; the coupon used_count column is dead so usage is counted off orders; the category product_count column is dead so counts are derived; no cost price is stored anywhere, so profit and margin cannot be computed.',
     '- Customer identities are deliberately withheld from you. For a name, phone or address, tell the owner to open the Orders page.',
     '- If asked about traffic, visitors, sessions, referrers, conversion rate, cart abandonment, product views, search demand, ad spend or post performance: say plainly that the store records none of it, that analytics only sends data out to Google Tag Manager and the Facebook Pixel and never reads it back, and point at GA4 or Meta Events Manager. Do not invent a number.',
-    '',
 ].join('\n');
+
+/** Rules and snapshot share one system message; some gateways drop a second. */
+const buildSystemPrompt = (prompts, snapshot) =>
+    [IDENTITY, ...prompts.promptLines(), '', HONESTY, ''].join('\n') + snapshot;
 
 /** Model output and client input are both untrusted; strip control characters. */
 const clean = (value) =>
@@ -70,7 +78,7 @@ function stripThinking(text) {
     return stripped || raw;
 }
 
-function sanitizeMessages(raw) {
+function sanitizeMessages(raw, historyChars = MAX_HISTORY_CHARS) {
     if (!Array.isArray(raw) || !raw.length) {
         return { status: 400, code: 'bad_request', error: 'Send a messages array.' };
     }
@@ -104,7 +112,7 @@ function sanitizeMessages(raw) {
 
     // Walked newest first so the current question always survives the budget.
     const kept = [];
-    let budget = MAX_HISTORY_CHARS;
+    let budget = historyChars;
     for (let i = cleaned.length - 1; i >= 0; i -= 1) {
         if (kept.length >= MAX_TURNS_SENT) break;
         if (kept.length && cleaned[i].content.length > budget) break;
@@ -144,11 +152,6 @@ export default async function handler(req, res) {
         });
     }
 
-    const parsed = sanitizeMessages(req.body?.messages);
-    if (parsed.error) {
-        return res.status(parsed.status).json({ error: parsed.error, code: parsed.code });
-    }
-
     try {
         const chain = await resolveCredentialChain(auth.supabase);
         if (!chain.length) {
@@ -158,14 +161,26 @@ export default async function handler(req, res) {
             });
         }
 
+        const prompts = await loadPromptTexts(auth.supabase, 'chat');
+
+        // The owner's tone text is charged against the same total ceiling as the
+        // history, so a long instruction costs turns rather than a 413. With no
+        // override ownerChars is 0 and not a single turn is lost.
+        const parsed = sanitizeMessages(req.body?.messages, MAX_HISTORY_CHARS - prompts.ownerChars);
+        if (parsed.error) {
+            return res.status(parsed.status).json({ error: parsed.error, code: parsed.code });
+        }
+
         const digest = await buildStoreSnapshot(auth.supabase);
         const snapshot = serializeSnapshot(digest);
 
-        // Rules and snapshot share one system message; some gateways drop a second.
         const call = await callChatCompletionsWithFailover(
             chain,
             {
-                messages: [{ role: 'system', content: `${RULES}${snapshot}` }, ...parsed.messages],
+                messages: [
+                    { role: 'system', content: buildSystemPrompt(prompts, snapshot) },
+                    ...parsed.messages,
+                ],
                 temperature: 0.2,
                 max_tokens: 900,
             },

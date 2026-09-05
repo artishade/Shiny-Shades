@@ -13,6 +13,7 @@ import { requireAdmin } from './_lib/requireAdmin.js';
 import { checkRateLimitStrict } from './_lib/rateLimit.js';
 import { providerError, recordCredentialOutcome, resolveCredentialChain } from './_lib/aiCredentials.js';
 import { badOutputError, clamp, cleanHint, requestJsonObject } from './_lib/aiJson.js';
+import { loadPromptTexts } from './_lib/aiPrompts.js';
 
 export const config = { maxDuration: 60 };
 
@@ -21,23 +22,25 @@ const MAX_INSTRUCTION_CHARS = 1200;
 const PROVIDER_TIMEOUT_MS = 20000;
 const PROVIDER_BUDGET_MS = 40000;
 
-const buildSystemPrompt = (rows) => [
+/**
+ * The field guidance comes from /admin/ai-prompts when the owner has written
+ * any; the envelope, the key list, the caps, the two-value `action` and the live
+ * category list do not.
+ */
+const buildSystemPrompt = (rows, prompts) => [
     "You manage the category list of a women's fashion store in Bangladesh.",
     'Reply with ONE JSON object and nothing else. No markdown, no code fences, no commentary.',
     'Use exactly these keys: action, targetSlug, name, description, parentSlug, seoTitle, seoDescription, seoKeywords.',
     '- action: "create" for a new category, "update" to change one that exists. Nothing else is allowed.',
     '- targetSlug: for "update", the slug being changed, VERBATIM from the list below. "" for "create".',
-    '- name: string, max 40 characters, title case, no emoji.',
-    '- description: string, one or two sentences, max 300 characters, shopper-facing.',
     '- parentSlug: the slug of the parent category if this belongs under one, else "".',
-    '- seoTitle: string, max 60 characters.',
-    '- seoDescription: string, max 160 characters.',
-    '- seoKeywords: string, 4-8 comma separated lowercase keywords.',
+    // Before the owner block, so a brand voice that asks for another language wins.
+    'Write in English unless the owner asks for another language.',
+    ...prompts.promptLines(),
     rows.length
         ? `Existing categories (slug — name — parent slug):\n${rows}`
         : 'The store has no categories yet, so action must be "create".',
     'Never delete anything. If the owner asks to delete, still reply with an "update" object and leave the fields unchanged.',
-    'Write in English unless the owner asks for another language.',
 ].join('\n');
 
 async function fetchCategories(supabase) {
@@ -101,9 +104,10 @@ export default async function handler(req, res) {
         }
 
         const categories = await fetchCategories(auth.supabase);
+        const prompts = await loadPromptTexts(auth.supabase, 'category-draft');
 
         const messages = [
-            { role: 'system', content: buildSystemPrompt(serializeCategories(categories)) },
+            { role: 'system', content: buildSystemPrompt(serializeCategories(categories), prompts) },
             { role: 'user', content: instruction },
         ];
 

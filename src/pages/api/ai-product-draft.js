@@ -15,6 +15,7 @@ import { requireAdmin } from './_lib/requireAdmin.js';
 import { checkRateLimitStrict } from './_lib/rateLimit.js';
 import { providerError, recordCredentialOutcome, resolveCredentialChain } from './_lib/aiCredentials.js';
 import { badOutputError, clamp, cleanHint, cleanTags, requestJsonObject } from './_lib/aiJson.js';
+import { loadPromptTexts } from './_lib/aiPrompts.js';
 import { SIMPLE_COLOR_NAMES, snapColorNames } from '../../lib/simpleColors';
 
 export const config = {
@@ -32,23 +33,24 @@ const PROVIDER_TIMEOUT_MS = 20000;
 const PROVIDER_BUDGET_MS = 40000;
 const DATA_URL_RE = /^data:image\/(png|jpe?g|webp|gif|avif);base64,([A-Za-z0-9+/=\s]+)$/i;
 
-const buildSystemPrompt = (categoryNames) => [
+/**
+ * The field guidance comes from /admin/ai-prompts when the owner has written
+ * any; the envelope, the key list, the caps, the colour vocabulary and the live
+ * category list do not.
+ */
+const buildSystemPrompt = (categoryNames, prompts) => [
     "You write e-commerce catalog copy for a women's fashion store in Bangladesh.",
     'The photos are all of ONE product. Write a single catalog entry for it.',
     'Reply with ONE JSON object and nothing else. No markdown, no code fences, no commentary.',
     'Use exactly these keys: name, seoTitle, shortDescription, description, tags, colors, categoryName, suggestedCategory.',
-    '- name: string, max 60 characters, a catchy retail product name. No brand name, no quote marks, no price.',
-    '- seoTitle: string, max 60 characters, search-friendly, may repeat the garment type.',
-    '- shortDescription: string, one sentence, max 160 characters.',
-    '- description: string, 2-4 sentences, max 700 characters, covering fabric, fit and styling as seen in the photos.',
-    '- tags: array of 6-12 short lowercase search keywords, no "#", no duplicates.',
-    `- colors: array of at most 4 colors visible on the garment, chosen VERBATIM from this list: ${SIMPLE_COLOR_NAMES.join(', ')}.`,
+    ...prompts.promptLines(),
+    `Every color must be chosen VERBATIM from this list: ${SIMPLE_COLOR_NAMES.join(', ')}.`,
     'Omit a color rather than invent a name that is not on that list.',
     categoryNames.length
-        ? `- categoryName: the ONE best fit chosen VERBATIM from this list: ${categoryNames.join(', ')}. Use "" if none fit.`
-        : '- categoryName: "" — the store has no categories yet.',
+        ? `categoryName must be chosen VERBATIM from this list: ${categoryNames.join(', ')}. Use "" if none fit.`
+        : 'The store has no categories yet, so categoryName must be "".',
     '- suggestedCategory: "" normally. Only when categoryName is "", the name of a category worth creating, max 40 characters.',
-    'Describe only what is visible. Never state sizes, fabric percentages, prices or care instructions.',
+    'Describe only what is visible in the photos. Never state sizes, fabric percentages, prices or care instructions.',
 ].join('\n');
 
 const fail = (status, code, error) => ({ status, code, error });
@@ -161,9 +163,10 @@ export default async function handler(req, res) {
 
         const categories = await fetchCategories(auth.supabase);
         const categoryNames = categories.map((c) => c.name);
+        const prompts = await loadPromptTexts(auth.supabase, 'product-draft');
 
         const messages = [
-            { role: 'system', content: buildSystemPrompt(categoryNames) },
+            { role: 'system', content: buildSystemPrompt(categoryNames, prompts) },
             {
                 role: 'user',
                 content: buildUserContent(images.dataUrls, {

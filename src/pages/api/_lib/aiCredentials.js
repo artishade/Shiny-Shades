@@ -197,6 +197,14 @@ export function providerError(res, result) {
     if (result.status === 401 || result.status === 403) {
         return res.status(502).json({ error: 'The provider rejected the API key.', code: 'provider_auth' });
     }
+    // Named before 429 because a request fault also stops the chain, and the raw
+    // gateway string it carries says nothing about the prompt that caused it.
+    if (isRequestFault(result)) {
+        return res.status(413).json({
+            error: 'The request was too long for this model. Shorten your instructions on the AI Prompts page, or switch to a model with a bigger context.',
+            code: 'context_too_long',
+        });
+    }
     if (result.status === 429) {
         return res.status(429).json({
             error: 'The provider is rate limiting us. Wait a moment.',

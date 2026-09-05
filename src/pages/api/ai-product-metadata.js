@@ -14,6 +14,7 @@ import { requireAdmin } from './_lib/requireAdmin.js';
 import { checkRateLimitStrict } from './_lib/rateLimit.js';
 import { providerError, recordCredentialOutcome, resolveCredentialChain } from './_lib/aiCredentials.js';
 import { badOutputError, clamp, cleanHint, cleanTags, requestJsonObject } from './_lib/aiJson.js';
+import { loadPromptTexts } from './_lib/aiPrompts.js';
 import { SIMPLE_COLOR_NAMES, snapColorNames } from '../../lib/simpleColors';
 
 export const config = {
@@ -33,17 +34,18 @@ const DATA_URL_RE = /^data:image\/(png|jpe?g|webp|gif|avif);base64,([A-Za-z0-9+/
 // becoming an SSRF fetcher for arbitrary internal addresses.
 const ALLOWED_IMAGE_HOST = 'res.cloudinary.com';
 
-const SYSTEM_PROMPT = [
+/**
+ * The field guidance comes from /admin/ai-prompts when the owner has written
+ * any; the envelope, the key list, the caps and the colour vocabulary do not.
+ */
+const buildSystemPrompt = (prompts) => [
     "You write e-commerce catalog copy for a women's fashion store in Bangladesh.",
     'Reply with ONE JSON object and nothing else. No markdown, no code fences, no commentary.',
     'Use exactly these keys: title, shortDescription, description, tags, colors.',
-    '- title: string, max 60 characters, no brand name, no quote marks.',
-    '- shortDescription: string, one sentence, max 160 characters.',
-    '- description: string, 2-4 sentences, max 700 characters, covering fabric, fit and styling as seen in the photo.',
-    '- tags: array of 6-12 short lowercase search keywords, no "#", no duplicates.',
-    `- colors: array of at most 4 colors visible on the garment, chosen VERBATIM from this list: ${SIMPLE_COLOR_NAMES.join(', ')}.`,
+    ...prompts.promptLines(),
+    `Every color must be chosen VERBATIM from this list: ${SIMPLE_COLOR_NAMES.join(', ')}.`,
     'Omit a color rather than invent a name that is not on that list.',
-    'Describe only what is visible. Never state sizes, fabric percentages, prices or care instructions.',
+    'Describe only what is visible in the photo. Never state sizes, fabric percentages, prices or care instructions.',
 ].join('\n');
 
 function buildUserContent(imageDataUrl, hints) {
@@ -153,7 +155,7 @@ export default async function handler(req, res) {
         }
 
         const messages = [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: buildSystemPrompt(await loadPromptTexts(auth.supabase, 'product-metadata')) },
             {
                 role: 'user',
                 content: buildUserContent(image.dataUrl, {
